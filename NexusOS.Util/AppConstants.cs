@@ -24,7 +24,6 @@
         public const string FileName = "{0}_{1}.xlsx";
         public const string ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-
         // Currency & Numbers
         public const string Currency = "$";
         public const string CurrencyFormat = "$#,##0.00";
