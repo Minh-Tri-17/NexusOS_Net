@@ -1,13 +1,17 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using NexusOS.API.Middleware;
 using NexusOS.BLL.Services;
 using NexusOS.DAL.Models;
 using NexusOS.Util;
+using Serilog;
+using Serilog.Events;
 using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,6 +66,17 @@ builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
+
+// Cấu hình các thiết lập cho hệ thống định danh (Identity)
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequiredLength = 8;
+    options.Password.RequiredUniqueChars = 5;
+});
 
 #endregion
 
@@ -151,6 +166,27 @@ builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfiles>());
 
 #endregion
 
+#region Log
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    // Giảm log từ ASP.NET
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    // Giảm log từ Entity Framework
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    // Giảm log từ System
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.File(
+        "logs/log-.txt",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+#endregion
+
 #region Localizer
 
 builder.Services.AddJsonLocalization(options =>
@@ -200,6 +236,13 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 
 var mapper = app.Services.GetRequiredService<IMapper>();
 DataHelpers.ConfigureMapper(mapper);
+
+app.UseMiddleware<ExceptionMiddleware>(); // ⚠️ Bắt toàn bộ lỗi
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+}); // 📝 Ghi log toàn bộ HTTP request/response
 
 app.UseHttpsRedirection(); // 🔐 Chuyển hướng HTTPS
 
