@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/NexusOS.API/appsettings.Development.json
+/NexusOS.API/appsettings.Development.json

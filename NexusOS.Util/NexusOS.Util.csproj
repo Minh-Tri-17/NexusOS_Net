@@ -6,4 +6,16 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.2.0" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <PackageReference Include="NPOI" Version="2.8.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NexusOS.DAL\NexusOS.DAL.csproj" />
+    <ProjectReference Include="..\NexusOS.MB\NexusOS.MB.csproj" />
+  </ItemGroup>
+
 </Project>

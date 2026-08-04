@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\NexusOS.DAL\NexusOS.DAL.csproj" />
+    <ProjectReference Include="..\NexusOS.MB\NexusOS.MB.csproj" />
+    <ProjectReference Include="..\NexusOS.Util\NexusOS.Util.csproj" />
+  </ItemGroup>
+
 </Project>
