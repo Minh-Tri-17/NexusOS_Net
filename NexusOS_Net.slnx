@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/1.BaseLayer/">
+    <Project Path="NexusOS.Util/NexusOS.Util.csproj" Id="73e161f9-f49e-4dc9-a195-a304b44e4b7a" />
+  </Folder>
+  <Folder Name="/2.DataLayer/">
+    <Project Path="NexusOS.DAL/NexusOS.DAL.csproj" Id="975ac957-3dbc-403f-9cf1-ecfba7a34e02" />
+  </Folder>
+  <Folder Name="/3.LogicLayer/">
+    <Project Path="NexusOS.BLL/NexusOS.BLL.csproj" Id="f6801ff9-bd61-4c6d-8426-911ab5be10ba" />
+    <Project Path="NexusOS.MB/NexusOS.MB.csproj" Id="3f07b8a3-ba84-4c8f-a2bc-5f8f3c4a0a63" />
+  </Folder>
+  <Folder Name="/4.PresentationLayer/">
+    <Project Path="NexusOS.API/NexusOS.API.csproj" Id="d414e718-f51e-4c72-9a56-bf387d7a3355" />
+  </Folder>
+</Solution>

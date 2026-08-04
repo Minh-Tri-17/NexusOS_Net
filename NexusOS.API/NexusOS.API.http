@@ -1,0 +1,6 @@
+@NexusOS.API_HostAddress = http://localhost:5268
+
+GET {{NexusOS.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
