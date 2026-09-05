@@ -19,6 +19,12 @@ public partial class CatCountry
     [StringLength(250)]
     public string CountryName { get; set; } = null!;
 
+    [StringLength(50)]
+    public string? Capital { get; set; }
+
+    [StringLength(50)]
+    public string? Region { get; set; }
+
     public bool? IsDelete { get; set; }
 
     [StringLength(500)]

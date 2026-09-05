@@ -565,9 +565,10 @@ namespace NexusOS.Util
             var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
             var headers = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-              .Where(s => s.Name != AppConstants.Id && s.GetMethod != null && !s.GetMethod.IsVirtual)
-              .Select(p => p.Name)
-              .ToList();
+                .Where(s => s.Name != AppConstants.Id && s.GetMethod != null
+                    && (!s.GetMethod.IsVirtual || s.GetMethod.IsFinal))
+                .Select(p => p.Name)
+                .ToList();
 
             // Header row
             for (int i = 0; i < headers.Count; i++)

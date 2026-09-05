@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using NexusOS.API;
 using NexusOS.API.Middleware;
 using NexusOS.BLL.Services;
 using NexusOS.DAL.Models;
@@ -178,7 +181,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("System", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.File(
-        "logs/log-.txt",
+        "Logs/log-.txt",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30)
     .CreateLogger();
@@ -198,7 +201,33 @@ builder.Services.AddJsonLocalization(options =>
 
 #endregion
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var localizer = context.HttpContext.RequestServices.GetRequiredService<IStringLocalizer<App>>();
+
+            var errors = context.ModelState
+                .Where(e => e.Value!.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value!.Errors.Select(e =>
+                    {
+                        string originalError = e.ErrorMessage;
+
+                        if (originalError.Contains("is required", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return localizer[Messages.FieldIsRequired, localizer[kvp.Key].Value].Value;
+                        }
+
+                        return localizer[originalError].Value;
+                    }).ToArray()
+                );
+
+            return new BadRequestObjectResult(errors);
+        };
+    });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
