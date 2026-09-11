@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NexusOS.MB;
+using System.Linq.Expressions;
 
 namespace NexusOS.Util
 {
@@ -30,8 +31,12 @@ namespace NexusOS.Util
                         {
                             var propValue = DataHelpers.GetString(filterValue);
                             if (!string.IsNullOrWhiteSpace(propValue))
-                                query = query.Where(s => EF.Functions.Like(EF.Property<string>(s!, propName).ToLower(),
-                                    $"%{propValue.Trim().ToLower()}%"));
+                            {
+                                var targetValue = $"%{propValue.Trim().ToLower()}%";
+                                var propNames = propName.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                                query = query.Where(CombineOr<T>(propNames, targetValue));
+                            }
 
                             break;
                         }
@@ -52,7 +57,7 @@ namespace NexusOS.Util
                                 .ToList();
 
                             if (listGuids.Any())
-                                query = query.Where(s => listGuids.Contains(EF.Property<Guid>(s!, AppConstants.Id)));
+                                query = query.Where(s => listGuids.Contains(EF.Property<Guid>(s!, propName)));
 
                             break;
                         }
@@ -89,6 +94,23 @@ namespace NexusOS.Util
             }
 
             return query;
+        }
+
+        private static Expression<Func<T, bool>> CombineOr<T>(IEnumerable<string> propNames, string targetValue)
+        {
+            Expression<Func<T, bool>> predicate = s => false;
+            var parameter = predicate.Parameters[0];
+
+            foreach (var name in propNames)
+            {
+                Expression<Func<T, bool>> itemExpr = s => EF.Functions.Like(EF.Property<string>(s!, name).ToLower(), targetValue);
+
+                var body = Expression.OrElse(predicate.Body, Expression.Invoke(itemExpr, parameter));
+
+                predicate = Expression.Lambda<Func<T, bool>>(body, parameter);
+            }
+
+            return predicate;
         }
 
         /// <summary>
