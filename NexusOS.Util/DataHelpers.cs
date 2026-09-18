@@ -1,9 +1,8 @@
 ﻿using AutoMapper;
 using ClosedXML.Excel;
-using NexusOS.DAL.Models;
+using Microsoft.EntityFrameworkCore;
 using NPOI.SS.UserModel;
 using System.Reflection;
-using System.Security.Cryptography;
 
 namespace NexusOS.Util
 {
@@ -163,7 +162,8 @@ namespace NexusOS.Util
         /// <param name="destination"></param>
         /// <param name="userName"></param>
         public static void MapAudit<TSource, TDestination>(TSource source, TDestination destination,
-            Guid? currentUser, NexusOsContext? context = null)
+            Guid? currentUser, DbSet<TDestination>? dbSet = null, IEnumerable<TDestination>? inMemoryList = null)
+            where TDestination : class
         {
             if (source == null || destination == null || _mapper == null)
                 return;
@@ -183,62 +183,83 @@ namespace NexusOS.Util
             var idValue = idProp?.GetValue(destination);
             bool isNew = idValue == null || (idValue is Guid guid && guid == Guid.Empty);
 
+            // Sinh mã code tự động nếu là bản ghi mới và thuộc tính Code tồn tại
+            var tableName = GetString(GetTableName<TDestination>());
+            if (tableName != null && tableName.StartsWith("Cat"))
+            {
+                tableName = tableName.Substring(3);
+            }
+
+            var codeProp = destinationProps.FirstOrDefault(p => p.Name == $"{tableName}{AppConstants.Code}" && p.PropertyType == typeof(string));
+            if (codeProp != null)
+            {
+                var codeValue = codeProp.GetValue(destination) as string;
+                if (string.IsNullOrEmpty(codeValue))
+                {
+                    var nameProp = destinationProps.FirstOrDefault(p =>
+                        (p.Name == "Name" || p.Name == $"{tableName}Name") && p.PropertyType == typeof(string));
+                    var nameValue = nameProp?.GetValue(destination) as string;
+
+                    string prefix = GeneratePrefixFromName(nameValue, tableName);
+                    string nextCode = $"{prefix}01";
+
+                    if (dbSet != null)
+                    {
+                        // Lấy danh sách các mã đã có bắt đầu bằng prefix
+                        var listCode = new List<string>();
+
+                        var listExistingCode = dbSet
+                            .Where(e => EF.Property<string>(e, codeProp.Name).StartsWith(prefix) && EF.Property<bool?>(e!, AppConstants.IsDelete) != true)
+                            .Select(e => EF.Property<string>(e, codeProp.Name))
+                            .ToList();
+
+                        listCode.AddRange(listExistingCode);
+
+                        if (inMemoryList != null)
+                        {
+                            var listLocalCode = inMemoryList
+                                .Where(d => d != destination)
+                                .Select(d => codeProp.GetValue(d) as string)
+                                .OfType<string>()
+                                .Where(c => c.StartsWith(prefix));
+
+                            listCode.AddRange(listLocalCode);
+                        }
+
+                        int maxIndex = 0;
+
+                        foreach (var code in listCode)
+                        {
+                            if (!string.IsNullOrEmpty(code) && code.Length > prefix.Length)
+                            {
+                                var numberPart = code.Substring(prefix.Length);
+
+                                if (int.TryParse(numberPart, out int parsedNum) && parsedNum > maxIndex)
+                                    maxIndex = parsedNum;
+                            }
+                        }
+
+                        nextCode = $"{prefix}{(maxIndex + 1):D2}";
+
+                        codeProp.SetValue(destination, nextCode);
+                    }
+                    else
+                    {
+                        codeProp.SetValue(destination, codeValue);
+                    }
+                }
+                else
+                {
+                    codeProp.SetValue(destination, codeValue);
+                }
+            }
+
             // Sinh tự động thông tin khi tạo mới hoặc cập nhật
             if (isNew)
             {
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.Id)?.SetValue(destination, Guid.NewGuid());
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.SetValue(destination, DateTime.Now);
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedBy)?.SetValue(destination, GetGuid(currentUser));
-
-                // Sinh mã code tự động nếu là bản ghi mới và thuộc tính Code tồn tại
-                var tableName = GetTableName<TDestination>();
-                if (tableName != null && tableName.StartsWith("Cat"))
-                {
-                    tableName = tableName.Substring(3);
-                }
-                var codeProp = destinationProps.FirstOrDefault(p => p.Name == $"{tableName}{AppConstants.Code}" && p.PropertyType == typeof(string));
-                if (codeProp != null)
-                {
-                    var codeValue = codeProp.GetValue(destination) as string;
-                    if (string.IsNullOrEmpty(codeValue))
-                    {
-                        if (context != null)
-                        {
-                            //var sequence = context.CodeSequences.Local.FirstOrDefault(s => s.EntityName == tableName)
-                            //    ?? context.CodeSequences.FirstOrDefault(s => s.EntityName == tableName);
-                            //if (sequence == null)
-                            //{
-                            //    string prefix = tableName.Substring(0, Math.Min(3, tableName.Length)).ToUpperInvariant();
-
-                            //    sequence = new CodeSequence
-                            //    {
-                            //        Id = Guid.NewGuid(),
-                            //        EntityName = tableName,
-                            //        Prefix = prefix,
-                            //        EntityValue = 1
-                            //    };
-
-                            //    context.CodeSequences.Add(sequence);
-                            //}
-                            //else
-                            //{
-                            //    sequence.EntityValue = (sequence.EntityValue ?? 0) + 1;
-                            //}
-
-                            //string generatedCode = $"{sequence.Prefix}{sequence.EntityValue.GetValueOrDefault().ToString("D6")}";
-                            //codeProp.SetValue(destination, generatedCode);
-                        }
-                        else
-                        {
-                            // Fallback: Tạo mã code tự động dựa trên tên bảng và một số ngẫu nhiên
-                            string prefix = tableName.Substring(0, 2).ToUpperInvariant();
-                            string randomNumber = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-                            string timestamp = DateTime.Now.ToString(AppConstants.DateTimeString);
-                            string generatedCode = $"{prefix}{randomNumber}{timestamp}";
-                            codeProp.SetValue(destination, generatedCode);
-                        }
-                    }
-                }
 
                 // Tự động thiết lập thuộc tính IsDelete về false nếu nó tồn tại
                 var isDeleteProp = destinationProps.FirstOrDefault(p => p.Name == AppConstants.IsDelete);
@@ -251,10 +272,6 @@ namespace NexusOS.Util
 
                 var valueDateCreate = destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.GetValue(destination);
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.SetValue(destination, valueDateCreate);
-
-                var valueCode = destinationProps.FirstOrDefault(p => p.Name == GetTableName<TDestination>() + AppConstants.Code)?.GetValue(destination);
-                destinationProps.FirstOrDefault(p => p.Name == GetTableName<TDestination>() + AppConstants.Code)?
-                    .SetValue(destination, valueCode);
 
                 var valueIsDelete = destinationProps.FirstOrDefault(p => p.Name == AppConstants.IsDelete)?.GetValue(destination);
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.IsDelete)?.SetValue(destination, valueIsDelete);
@@ -273,7 +290,7 @@ namespace NexusOS.Util
         /// <param name="destinationList"></param>
         /// <param name="userName"></param>
         public static void MapListAudit<TSource, TDestination>(List<TSource> sourceList, List<TDestination> destinationList,
-            Guid? userId, NexusOsContext? context = null) where TDestination : new()
+            Guid? userId, DbSet<TDestination>? dbSet = null) where TDestination : class, new()
         {
             if (sourceList == null || destinationList == null)
                 return;
@@ -294,12 +311,12 @@ namespace NexusOS.Util
                 if (destination == null)
                 {
                     destination = new TDestination();
-                    MapAudit(source, destination, userId, context);
+                    MapAudit(source, destination, userId, dbSet, destinationList);
                     destinationList.Add(destination);
                 }
                 else
                 {
-                    MapAudit(source, destination, userId, context);
+                    MapAudit(source, destination, userId, dbSet, destinationList);
                 }
             }
         }
@@ -307,6 +324,35 @@ namespace NexusOS.Util
         private static string GetTableName<T>()
         {
             return typeof(T).Name;
+        }
+
+        private static string GeneratePrefixFromName(string? rawName, string? fallbackTableName)
+        {
+            if (!string.IsNullOrWhiteSpace(rawName))
+            {
+                var words = rawName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                // Lấy chữ cái đầu của từng từ ghép lại: "Viet Nam" => "VN"
+                var initials = words
+                    .Where(w => !string.IsNullOrWhiteSpace(w))
+                    .Select(w => char.ToUpperInvariant(w[0]))
+                    .ToArray();
+
+                if (initials.Length > 0)
+                {
+                    return new string(initials);
+                }
+            }
+
+            // Fallback nếu Name rỗng: lấy 2 ký tự đầu của tableName
+            if (!string.IsNullOrEmpty(fallbackTableName))
+            {
+                return fallbackTableName.Length >= 2
+                    ? fallbackTableName.Substring(0, 2).ToUpperInvariant()
+                    : fallbackTableName.ToUpperInvariant();
+            }
+
+            return "NS";
         }
 
         #endregion
@@ -485,7 +531,12 @@ namespace NexusOS.Util
         private static void ResetSystemFields<T>(T obj, PropertyInfo[] props)
         {
             var idProp = props.FirstOrDefault(p => p.Name == AppConstants.Id && p.PropertyType == typeof(Guid));
-            idProp?.SetValue(obj, Guid.Empty);
+            var idValue = idProp?.GetValue(obj);
+
+            if (idValue == null || GetGuid(idValue) == Guid.Empty)
+                idProp?.SetValue(obj, Guid.Empty);
+            else
+                idProp?.SetValue(obj, idValue);
 
             string[] systemFields = {
                 AppConstants.CreatedAt,
@@ -565,7 +616,7 @@ namespace NexusOS.Util
             var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
             var headers = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(s => s.Name != AppConstants.Id && s.GetMethod != null
+                .Where(s => s.GetMethod != null
                     && (!s.GetMethod.IsVirtual || s.GetMethod.IsFinal))
                 .Select(p => p.Name)
                 .ToList();

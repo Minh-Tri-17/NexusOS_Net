@@ -44,7 +44,7 @@ namespace NexusOS.BLL.Services
                 await BeforeSaveAsync(request, entity, true);
 
                 // Map dữ liệu từ request sang entity và gắn Audit (UserId, CreatedAt...)
-                DataHelpers.MapAudit(request, entity, _currentUser.UserId, _context);
+                DataHelpers.MapAudit(request, entity, _currentUser.UserId, _dbSet);
 
                 await _dbSet.AddAsync(entity);
 
@@ -90,7 +90,7 @@ namespace NexusOS.BLL.Services
                 await BeforeSaveAsync(request, entity, false);
 
                 // Map đè dữ liệu mới từ request vào entity đang theo dõi (Tracking)
-                DataHelpers.MapAudit(request, entity, _currentUser.UserId, _context);
+                DataHelpers.MapAudit(request, entity, _currentUser.UserId, _dbSet);
 
                 await AfterSaveAsync(request, entity);
 
@@ -225,25 +225,60 @@ namespace NexusOS.BLL.Services
                 listModel.Add(model);
             }
 
-            var listEntity = new List<TEntity>();
+            var idProp = typeof(TModel).GetProperty(AppConstants.Id);
+            var listModelID = listModel
+                .Select(s => idProp?.GetValue(s))
+                .OfType<Guid>()
+                .Where(id => id != Guid.Empty)
+                .ToList();
+
+            FilterModel filter = new FilterModel()
+            {
+                Filters = new List<FilterItemModel>()
+                {
+                    new FilterItemModel
+                    {
+                        FilterName = AppConstants.Id,
+                        FilterType = FilterType.Guid.ToString(),
+                        FilterOperator = FilterOperator.Contains.ToString(),
+                        FilterValue = string.Join(',', listModelID)
+                    }
+                }
+            };
+
+            IQueryable<TEntity> query = _dbSet
+                .ApplySoftDelete(filter)
+                .ApplyCommonFilters(filter);
+
+            var listEntity = await query.ToListAsync() ?? new List<TEntity>();
+
             // Map từ Model sang Entity và gắn UserId để Audit
-            DataHelpers.MapListAudit<TModel, TEntity>(listModel, listEntity, _currentUser.UserId, _context);
+            DataHelpers.MapListAudit<TModel, TEntity>(listModel, listEntity, _currentUser.UserId, _dbSet);
 
             try
             {
                 // Tắt theo dõi thay đổi để tăng tốc độ nạp dữ liệu
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-                await _dbSet.AddRangeAsync(listEntity);
+                if (listModelID == null || listModelID.Count() <= 0)
+                    await _dbSet.AddRangeAsync(listEntity);
+
+                // Kích hoạt quét thay đổi THỦ CÔNG đúng 1 lần duy nhất cho toàn bộ danh sách
+                _context.ChangeTracker.DetectChanges();
+
                 var result = await _context.SaveChangesAsync();
+
+                // Xóa cache tracker sau khi đã lưu thành công để giải phóng RAM
+                _context.ChangeTracker.Clear();
 
                 return result > 0
                     ? APIResults<bool>.Success(true, _localizer[Messages.ImportSuccess])
                     : APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
             }
             finally
-            {  // Bật lại hoặc Clear tracker
-                _context.ChangeTracker.Clear();
+            {
+                // Khôi phục lại trạng thái mặc định của ChangeTracker cho các tác vụ khác
+                _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
         }
     }
