@@ -24,8 +24,8 @@ namespace NexusOS.BLL.Services
         private readonly IConfiguration _config; // Dùng để đọc cấu hình ứng dụng
         private readonly IdentityOptions _options; // Dùng để lấy thiết lập Identity
         private readonly IStringLocalizer _localizer; // Dùng để đa ngôn ngữ hóa thông báo
-        private static readonly ConcurrentDictionary<string, object> otpStore
-            = new ConcurrentDictionary<string, object>(); // Dùng để lưu trữ mã OTP tạm thời
+        private static readonly ConcurrentDictionary<string, OtpEntry> otpStore
+            = new ConcurrentDictionary<string, OtpEntry>(); // Dùng để lưu trữ mã OTP tạm thời
 
         public AccountService(NexusOsContext context, IConfiguration config, IStringLocalizer localizer, IOptions<IdentityOptions> options)
         {
@@ -49,7 +49,7 @@ namespace NexusOS.BLL.Services
             var password = DataHelpers.GetString(request.Password);
 
             var user = await _context.Users.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
-                .FirstOrDefaultAsync(s => !string.IsNullOrWhiteSpace(s.Username) && s.Username == username);
+                .FirstOrDefaultAsync(s => !string.IsNullOrWhiteSpace(s.Username) && (s.Username == username || s.Email == username));
             if (user == null)
                 return APIResults<string>.Failure(_localizer[Messages.InvalidUsernameOrPassword]); // Luôn trả ra message chung chung để tránh hacker biết được thông tin chính xác
 
@@ -116,10 +116,6 @@ namespace NexusOS.BLL.Services
             var password = DataHelpers.GetString(request.Password);
             var passwordHashed = PasswordHasher.HashPassword(password);
 
-            var validateMessage = ValidateOtp(DataHelpers.GetString(request.Email), DataHelpers.GetString(request.Otp));
-            if (!string.IsNullOrEmpty(validateMessage))
-                return APIResults<bool>.Failure(validateMessage);
-
             var user = await _context.Users.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
                 .FirstOrDefaultAsync(s => s.Username == username
                && s.PhoneNumber == phoneNumber && s.Email == mail);
@@ -146,17 +142,16 @@ namespace NexusOS.BLL.Services
                 : APIResults<bool>.Failure(_localizer[Messages.ResetPasswordFailure]);
         }
 
-        public async Task<APIResults<bool>> SendOTP(MailModel mail)
+        public async Task<APIResults<bool>> ValidateOtp(OTPModel request)
         {
-            var otpString = GenerateOtp(DataHelpers.GetString(mail.To));
-            mail.Subject = "SendOTP";
-            mail.Body = otpString;
+            var mail = DataHelpers.GetString(request.Email);
+            var otp = DataHelpers.GetString(request.Otp);
 
-            var result = await MailHelpers.SendMail(mail);
+            var validateMessage = ValidateOtp(mail, otp);
+            if (!string.IsNullOrEmpty(validateMessage))
+                return APIResults<bool>.Failure(validateMessage);
 
-            return result
-                ? APIResults<bool>.Success(true, _localizer[Messages.SendMailSuccess])
-                : APIResults<bool>.Failure(_localizer[Messages.SendMailFailure]);
+            return APIResults<bool>.Success(true, _localizer[Messages.OTPCorrect]);
         }
 
         private string ValidateOtp(string email, string otp)
@@ -198,6 +193,19 @@ namespace NexusOS.BLL.Services
             return string.Empty;
         }
 
+        public async Task<APIResults<bool>> SendOTP(MailModel mail)
+        {
+            var otpString = GenerateOtp(DataHelpers.GetString(mail.To));
+            mail.Subject = "SendOTP";
+            mail.Body = otpString;
+
+            var result = await MailHelpers.SendMail(mail);
+
+            return result
+                ? APIResults<bool>.Success(true, _localizer[Messages.SendMailSuccess])
+                : APIResults<bool>.Failure(_localizer[Messages.SendMailFailure]);
+        }
+
         private string GenerateOtp(string email)
         {
             // 1. Sinh OTP 6 chữ số an toàn
@@ -213,7 +221,7 @@ namespace NexusOS.BLL.Services
             var hashed = Convert.ToBase64String(hashBytes);
 
             // 3. Lưu vào store tạm
-            otpStore[email] = new
+            otpStore[email] = new OtpEntry
             {
                 Hashed = hashed,
                 Salt = salt,

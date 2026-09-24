@@ -17,6 +17,20 @@ namespace NexusOS.MB
         public List<IFormFile>? Attachments { get; set; }
     }
 
+    public class OTPModel
+    {
+        public string? Otp { get; set; }
+        public string? Email { get; set; }
+    }
+
+    public class OtpEntry
+    {
+        public string Hashed { get; set; } = string.Empty;
+        public string Salt { get; set; } = string.Empty;
+        public DateTime ExpiresAt { get; set; }
+        public int AttemptsLeft { get; set; } = 3;
+    }
+
     public class FilterModel
     {
         public bool AllowPaging { get; set; } = true;
@@ -56,10 +70,8 @@ namespace NexusOS.MB
     public partial class UserModel : User
     {
         public bool Remember { get; set; } = false;
-        [Required]
         public string? Password { get; set; }
         public string? RoleIds { get; set; }
-        public string? Otp { get; set; }
     }
 
     #endregion

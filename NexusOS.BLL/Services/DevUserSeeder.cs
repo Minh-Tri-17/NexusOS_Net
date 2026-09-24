@@ -14,18 +14,41 @@ namespace NexusOS.BLL.Services
 
         public void Seed()
         {
-            if (_context.Users.Any(u => u.Id == Guid.Parse("00000000-0000-0000-0100-000000000000")))
-                return;
-
-            var devUser = new User
+            var listId = new List<Guid>()
             {
-                Id = Guid.Parse("00000000-0000-0000-0100-000000000000"),
-                Username = "dev",
-                Email = "tri.nguyen.sft@gmail.com",
-                PasswordHash = PasswordHasher.HashPassword("Dev123!@#"),
+                new Guid("00000000-0000-0000-0100-000000000000"),
+                new Guid("00000000-0000-0000-0200-000000000000"),
+                new Guid("00000000-0000-0000-0300-000000000000"),
             };
 
-            _context.Users.Add(devUser);
+            if (_context.Users.Any(u => listId.Contains(u.Id))) return;
+
+            var listUser = new List<User>()
+            {
+                new  User
+                {
+                    Id = Guid.Parse("00000000-0000-0000-0100-000000000000"),
+                    Username = "director100",
+                    Email = "director.manager@nexusost.com",
+                    PasswordHash = PasswordHasher.HashPassword("Director2026!#"),
+                },
+                new  User
+                {
+                    Id = Guid.Parse("00000000-0000-0000-0200-000000000000"),
+                    Username = "hr200",
+                    Email = "hr.manager@nexusost.com",
+                    PasswordHash = PasswordHasher.HashPassword("HRManager2026!#"),
+                },
+                new  User
+                {
+                    Id = Guid.Parse("00000000-0000-0000-0300-000000000000"),
+                    Username = "emp300",
+                    Email = "emp.john@nexusost.com",
+                    PasswordHash = PasswordHasher.HashPassword("Employee2026!#"),
+                },
+            };
+
+            _context.Users.AddRange(listUser);
             _context.SaveChanges();
         }
     }

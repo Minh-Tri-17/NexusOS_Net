@@ -33,6 +33,7 @@
         public const string OTPExpired = "OTPExpired";
         public const string OTPNoAttemptsLeft = "OTPNoAttemptsLeft";
         public const string OTPIncorrect = "OTPIncorrect";
+        public const string OTPCorrect = "OTPCorrect";
         public const string InvalidUsernameOrPassword = "InvalidUsernameOrPassword";
         public const string TokenKeyNotConfigured = "TokenKeyNotConfigured";
         public const string ResetPasswordFailure = "ResetPasswordFailure";

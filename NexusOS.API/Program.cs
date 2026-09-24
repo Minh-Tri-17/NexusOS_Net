@@ -46,7 +46,17 @@ builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 // Cấu hình chính sách CORS: Cho phép các ứng dụng Frontend từ danh sách origins cụ thể
 builder.Services.AddCors(p => p.AddPolicy("FrontendCorsPolicy", build =>
 {
-    build.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
+    build.SetIsOriginAllowed(origin =>
+    {
+        if (string.IsNullOrEmpty(origin)) return false;
+
+        var host = new Uri(origin).Host;
+        // Chấp nhận localhost hoặc bất kỳ domain nào kết thúc bằng .trycloudflare.com
+        return host == "localhost" || host.EndsWith(".trycloudflare.com");
+    })
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .AllowCredentials(); // Nếu có dùng Cookie, Refresh Token hoặc Auth Header gửi kèm
 }));
 
 // Cấu hình giới hạn kích thước dữ liệu gửi lên (Body Size) cho Multipart (thường là Upload file)
@@ -273,7 +283,7 @@ app.UseSerilogRequestLogging(options =>
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
 }); // 📝 Ghi log toàn bộ HTTP request/response
 
-app.UseHttpsRedirection(); // 🔐 Chuyển hướng HTTPS
+//app.UseHttpsRedirection(); // 🔐 Chuyển hướng HTTPS
 
 app.UseRouting(); // 🧭 Routing
 

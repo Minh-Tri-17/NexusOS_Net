@@ -47,6 +47,13 @@ namespace NexusOS.API.Controllers
             return Ok(result);
         }
 
+        [HttpPost(nameof(ValidateOtp))]
+        public async Task<ActionResult<APIResults<bool>>> ValidateOtp([FromBody] OTPModel otp)
+        {
+            var result = await _accountService.ValidateOtp(otp);
+            return Ok(result);
+        }
+
         #endregion
     }
 }

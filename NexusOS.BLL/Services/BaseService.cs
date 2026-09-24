@@ -154,6 +154,8 @@ namespace NexusOS.BLL.Services
 
         public virtual async Task<APIResults<PagingResults<TModel>>> GetPaging(FilterModel filter)
         {
+            _context.Database.SetCommandTimeout(120); // Tăng thời gian timeout lên 120 giây(mặc định là 30s)
+
             IQueryable<TEntity> query = _dbSet.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
                 .ApplySort()
                 .ApplySoftDelete(filter)
@@ -165,13 +167,7 @@ namespace NexusOS.BLL.Services
             var list = await query.ToListAsync();
             var listModel = DataHelpers.MappingList<TEntity, TModel>(list);
 
-            var pageResult = new PagingResults<TModel>
-            {
-                TotalRecord = totalCount,
-                PageIndex = filter.PageIndex,
-                PageSize = filter.PageSize,
-                Items = listModel
-            };
+            var pageResult = new PagingResults<TModel>(listModel, totalCount, filter.PageIndex, filter.PageSize);
 
             return APIResults<PagingResults<TModel>>.Success(pageResult, _localizer[Messages.GetListResultSuccess]);
         }
