@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using NexusOS.API;
 using NexusOS.API.Middleware;
 using NexusOS.BLL.Services;
 using NexusOS.DAL.Models;
@@ -216,7 +215,7 @@ builder.Services.AddControllers()
     {
         options.InvalidModelStateResponseFactory = context =>
         {
-            var localizer = context.HttpContext.RequestServices.GetRequiredService<IStringLocalizer<App>>();
+            var localizer = context.HttpContext.RequestServices.GetRequiredService<IStringLocalizer<SharedResource>>();
 
             var errors = context.ModelState
                 .Where(e => e.Value!.Errors.Count > 0)
@@ -238,6 +237,7 @@ builder.Services.AddControllers()
             return new BadRequestObjectResult(errors);
         };
     });
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -263,12 +263,15 @@ if (app.Environment.IsDevelopment())
 var cultures = new[]
 {
     new CultureInfo("vi"),
-    new CultureInfo("en")
+    new CultureInfo("en"),
+    new CultureInfo("fr"),
+    new CultureInfo("ja"),
+    new CultureInfo("zh")
 };
 
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
-    DefaultRequestCulture = new RequestCulture("vi"),
+    DefaultRequestCulture = new RequestCulture("en"),
     SupportedCultures = cultures,
     SupportedUICultures = cultures
 });

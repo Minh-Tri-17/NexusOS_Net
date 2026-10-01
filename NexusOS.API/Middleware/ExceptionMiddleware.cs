@@ -10,9 +10,9 @@ namespace NexusOS.API.Middleware
     {
         private readonly RequestDelegate _next; // Dùng để chuyển tiếp request tiếp theo
         private readonly ILogger<ExceptionMiddleware> _logger; // Dùng để ghi log hệ thống
-        private readonly IStringLocalizer _localizer; // Dùng để đa ngôn ngữ hóa thông báo
+        private readonly IStringLocalizer<SharedResource> _localizer; // Dùng để đa ngôn ngữ hóa thông báo
 
-        public ExceptionMiddleware(RequestDelegate next, IStringLocalizer localizer, ILogger<ExceptionMiddleware> logger)
+        public ExceptionMiddleware(RequestDelegate next, IStringLocalizer<SharedResource> localizer, ILogger<ExceptionMiddleware> logger)
         {
             _next = next;
             _logger = logger;

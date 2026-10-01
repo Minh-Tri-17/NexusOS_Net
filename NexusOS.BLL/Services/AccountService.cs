@@ -23,11 +23,11 @@ namespace NexusOS.BLL.Services
         private readonly NexusOsContext _context; // Dùng để truy cập vào DbContext
         private readonly IConfiguration _config; // Dùng để đọc cấu hình ứng dụng
         private readonly IdentityOptions _options; // Dùng để lấy thiết lập Identity
-        private readonly IStringLocalizer _localizer; // Dùng để đa ngôn ngữ hóa thông báo
+        private readonly IStringLocalizer<SharedResource> _localizer; // Dùng để đa ngôn ngữ hóa thông báo
         private static readonly ConcurrentDictionary<string, OtpEntry> otpStore
             = new ConcurrentDictionary<string, OtpEntry>(); // Dùng để lưu trữ mã OTP tạm thời
 
-        public AccountService(NexusOsContext context, IConfiguration config, IStringLocalizer localizer, IOptions<IdentityOptions> options)
+        public AccountService(NexusOsContext context, IConfiguration config, IStringLocalizer<SharedResource> localizer, IOptions<IdentityOptions> options)
         {
             _context = context;
             _config = config;
@@ -98,7 +98,7 @@ namespace NexusOS.BLL.Services
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             DateTime expirationTime = request.Remember
-                ? DateTime.UtcNow.AddYears(1) : DateTime.UtcNow.AddHours(1); // UtcNow để không lỗi khi server khác timezone
+                ? DateTime.UtcNow.AddYears(1) : DateTime.UtcNow.AddDays(1); // UtcNow để không lỗi khi server khác timezone
 
             var token = new JwtSecurityToken(tokenIssuer, tokenIssuer, claims,
                expires: expirationTime, signingCredentials: creds);
@@ -110,15 +110,12 @@ namespace NexusOS.BLL.Services
 
         public async Task<APIResults<bool>> ResetPass(UserModel request)
         {
-            var username = DataHelpers.GetString(request.Username);
-            var phoneNumber = DataHelpers.GetString(request.PhoneNumber);
             var mail = DataHelpers.GetString(request.Email);
             var password = DataHelpers.GetString(request.Password);
             var passwordHashed = PasswordHasher.HashPassword(password);
 
-            var user = await _context.Users.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
-                .FirstOrDefaultAsync(s => s.Username == username
-               && s.PhoneNumber == phoneNumber && s.Email == mail);
+            var user = await _context.Users
+                .FirstOrDefaultAsync(s => s.Email == mail);
 
             if (user == null)
                 return APIResults<bool>.Failure(_localizer[Messages.NotFoundUpdate]);

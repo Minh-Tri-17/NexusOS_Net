@@ -1,5 +1,6 @@
 {
   "FieldIsRequired": "{0} must not be left blank.",
   "Username": "Username",
-  "Password": "Password"
+  "Password": "Password",
+  "UpdateSuccess": "Update data successed"
 }

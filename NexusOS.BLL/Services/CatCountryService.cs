@@ -2,6 +2,7 @@
 using NexusOS.BLL.Interfaces;
 using NexusOS.DAL.Models;
 using NexusOS.MB;
+using NexusOS.Util;
 
 namespace NexusOS.BLL.Services
 {
@@ -9,7 +10,7 @@ namespace NexusOS.BLL.Services
     {
         #region Infrastructure
 
-        public CatCountryService(NexusOsContext context, ICurrentUserService currentUser, IStringLocalizer localizer) : base(context, currentUser, localizer)
+        public CatCountryService(NexusOsContext context, ICurrentUserService currentUser, IStringLocalizer<SharedResource> localizer) : base(context, currentUser, localizer)
         {
 
         }

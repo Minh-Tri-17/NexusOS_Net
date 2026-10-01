@@ -20,9 +20,9 @@ namespace NexusOS.BLL.Services
         protected readonly NexusOsContext _context; // Dùng để truy cập vào DbContext
         protected readonly ICurrentUserService _currentUser; // Dùng để lấy thông tin người dùng hiện tại
         protected readonly DbSet<TEntity> _dbSet; // Dùng để thao tác với tập thực thể
-        protected readonly IStringLocalizer _localizer; // Dùng để đa ngôn ngữ hóa thông báo
+        protected readonly IStringLocalizer<SharedResource> _localizer; // Dùng để đa ngôn ngữ hóa thông báo
 
-        protected BaseService(NexusOsContext context, ICurrentUserService currentUser, IStringLocalizer localizer)
+        protected BaseService(NexusOsContext context, ICurrentUserService currentUser, IStringLocalizer<SharedResource> localizer)
         {
             _context = context;
             _currentUser = currentUser;
