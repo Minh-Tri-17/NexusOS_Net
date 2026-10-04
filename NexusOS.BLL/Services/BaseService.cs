@@ -246,7 +246,8 @@ namespace NexusOS.BLL.Services
                 .ApplySoftDelete(filter)
                 .ApplyCommonFilters(filter);
 
-            var listEntity = await query.ToListAsync() ?? new List<TEntity>();
+            var listEntity = listModelID != null && listModelID.Count() > 0
+                ? await query.ToListAsync() : new List<TEntity>();
 
             // Map từ Model sang Entity và gắn UserId để Audit
             DataHelpers.MapListAudit<TModel, TEntity>(listModel, listEntity, _currentUser.UserId, _dbSet);
