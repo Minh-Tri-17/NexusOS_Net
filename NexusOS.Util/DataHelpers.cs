@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using ClosedXML.Excel;
+using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
-using NPOI.SS.UserModel;
 using System.Reflection;
 
 namespace NexusOS.Util
@@ -257,7 +257,7 @@ namespace NexusOS.Util
             // Sinh tự động thông tin khi tạo mới hoặc cập nhật
             if (isNew)
             {
-                destinationProps.FirstOrDefault(p => p.Name == AppConstants.Id)?.SetValue(destination, Guid.NewGuid());
+                destinationProps.FirstOrDefault(p => p.Name == AppConstants.Id)?.SetValue(destination, Guid.CreateVersion7());
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.SetValue(destination, DateTime.Now);
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedBy)?.SetValue(destination, GetGuid(currentUser));
 
@@ -365,22 +365,14 @@ namespace NexusOS.Util
         /// <typeparam name="T"></typeparam>
         /// <param name="row"></param>
         /// <returns></returns>
-        public static T CopyImport<T>(IRow headerRow, IRow dataRow) where T : new()
+        public static T CopyImport<T>(List<string> headers, IExcelDataReader reader) where T : new()
         {
             var model = new T();
             var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            for (int i = 0; i < headerRow.LastCellNum; i++)
+            for (int i = 0; i < headers.Count; i++)
             {
-                var headerCell = headerRow.GetCell(i);
-                var dataCell = dataRow.GetCell(i);
-
-                // Bỏ qua nếu ô tiêu đề hoặc ô dữ liệu không tồn tại
-                if (headerCell == null || dataCell == null)
-                    continue;
-
-                // Bỏ qua khi ô tiêu đề không có giá trị
-                string? headerName = headerCell.ToString()?.Trim();
+                string headerName = headers[i];
                 if (string.IsNullOrEmpty(headerName))
                     continue;
 
@@ -392,7 +384,15 @@ namespace NexusOS.Util
                 if (prop == null || !prop.CanWrite)
                     continue;
 
-                object? value = ConvertToPropertyType(prop.PropertyType, dataCell.ToString());
+                // Nếu cột vượt quá FieldCount hoặc ô không có data thì bỏ qua, giữ default của entity/model
+                if (i >= reader.FieldCount)
+                    continue;
+
+                var cellValue = reader.GetValue(i);
+                if (cellValue == null || cellValue == DBNull.Value)
+                    continue;
+
+                object? value = ConvertToPropertyType(prop.PropertyType, cellValue.ToString());
                 prop.SetValue(model, value);
             }
 
@@ -406,47 +406,40 @@ namespace NexusOS.Util
         }
 
         /// <summary>
-        /// Dùng để copy dữ liệu từ Excel sang đối tượng dựa vào key-value pair trong ô dữ liệu (áp dụng cho 1 model duy nhất)
+        /// Dùng để copy dữ liệu từ Excel sang 1 đối tượng dựa vào key-value pair trong ô dữ liệu
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="row"></param>
         /// <returns></returns>
-        public static T CopyImportTemplateSingle<T>(ISheet sheet) where T : new()
+        public static T CopyImportTemplateSingle<T>(IExcelDataReader reader) where T : new()
         {
             var model = new T();
             var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            for (int i = sheet.FirstRowNum; i <= sheet.LastRowNum; i++)
+            for (int col = 0; col < reader.FieldCount; col++)
             {
-                var dataRow = sheet.GetRow(i);
-                if (dataRow == null)
+                var cellValue = reader.GetValue(col)?.ToString();
+                // Bỏ qua nếu ô dữ liệu không tồn tại hoặc không có giá trị
+                if (string.IsNullOrWhiteSpace(cellValue) || !cellValue.Contains("<:>"))
                     continue;
 
-                foreach (var cell in dataRow.Cells)
-                {
-                    var cellValue = cell.ToString();
-                    // Bỏ qua nếu ô dữ liệu không tồn tại hoặc không có giá trị
-                    if (string.IsNullOrWhiteSpace(cellValue) || !cellValue.Contains("<:>"))
-                        continue;
+                var parts = cellValue.Split(new[] { "<:>" }, StringSplitOptions.None);
+                if (parts.Length != 2)
+                    continue;
 
-                    var parts = cellValue.Split(new[] { "<:>" }, StringSplitOptions.None);
-                    if (parts.Length != 2)
-                        continue;
+                var fieldName = parts[0].Split(' ').LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                var fieldValue = parts[^1].Trim();
 
-                    var fieldName = parts[0].Split(' ').LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
-                    var fieldValue = parts[^1].Trim();
+                // Tìm thuộc tính trong class T có tên trùng với tiêu đề cột (không phân biệt chữ hoa/thường).
+                var prop = props.FirstOrDefault(p =>
+                    string.Equals(p.Name, fieldName, StringComparison.OrdinalIgnoreCase));
 
-                    // Tìm thuộc tính trong class T có tên trùng với tiêu đề cột (không phân biệt chữ hoa/thường).
-                    var prop = props.FirstOrDefault(p =>
-                        string.Equals(p.Name, fieldName, StringComparison.OrdinalIgnoreCase));
+                // Bỏ qua nếu không tìm thấy thuộc tính tương ứng hoặc không thể ghi
+                if (prop == null || !prop.CanWrite)
+                    continue;
 
-                    // Bỏ qua nếu không tìm thấy thuộc tính tương ứng hoặc không thể ghi
-                    if (prop == null || !prop.CanWrite)
-                        continue;
-
-                    object? value = ConvertToPropertyType(prop.PropertyType, fieldValue);
-                    prop.SetValue(model, value);
-                }
+                object? value = ConvertToPropertyType(prop.PropertyType, fieldValue);
+                prop.SetValue(model, value);
             }
 
             #region Set default values for system-defined attributes
@@ -464,48 +457,41 @@ namespace NexusOS.Util
         /// <param name="sheet"></param>
         /// <param name="models"></param>
         /// <returns></returns>
-        public static object[] CopyImportTemplateMulti(ISheet sheet, params object[] models)
+        public static object[] CopyImportTemplateMulti(IExcelDataReader reader, params object[] models)
         {
             // Lấy sẵn property list cho từng model để giảm chi phí reflection
             var listModelProps = models.Select(m => m.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)).ToArray();
 
-            for (int i = sheet.FirstRowNum; i <= sheet.LastRowNum; i++)
+            for (int col = 0; col < reader.FieldCount; col++)
             {
-                var dataRow = sheet.GetRow(i);
-                if (dataRow == null)
+                var cellValue = reader.GetValue(col)?.ToString();
+                // Bỏ qua nếu ô dữ liệu không tồn tại hoặc không có giá trị
+                if (string.IsNullOrWhiteSpace(cellValue) || !cellValue.Contains("<:>"))
                     continue;
 
-                foreach (var cell in dataRow.Cells)
+                var parts = cellValue.Split(new[] { "<:>" }, StringSplitOptions.None);
+                if (parts.Length != 2)
+                    continue;
+
+                var fieldName = parts[0].Split(' ').LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                var fieldValue = parts[^1].Trim();
+
+                // Lặp qua tất cả model
+                for (int modelIndex = 0; modelIndex < models.Length; modelIndex++)
                 {
-                    var cellValue = cell.ToString();
-                    // Bỏ qua nếu ô dữ liệu không tồn tại hoặc không có giá trị
-                    if (string.IsNullOrWhiteSpace(cellValue) || !cellValue.Contains("<:>"))
+                    var props = listModelProps[modelIndex];
+                    var model = models[modelIndex];
+
+                    // Tìm thuộc tính trong class T có tên trùng với tiêu đề cột (không phân biệt chữ hoa/thường).
+                    var prop = props.FirstOrDefault(p =>
+                        string.Equals(p.Name, fieldName, StringComparison.OrdinalIgnoreCase));
+
+                    // Bỏ qua nếu không tìm thấy thuộc tính tương ứng hoặc không thể ghi
+                    if (prop == null || !prop.CanWrite)
                         continue;
 
-                    var parts = cellValue.Split(new[] { "<:>" }, StringSplitOptions.None);
-                    if (parts.Length != 2)
-                        continue;
-
-                    var fieldName = parts[0].Split(' ').LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
-                    var fieldValue = parts[^1].Trim();
-
-                    // Lặp qua tất cả model
-                    for (int modelIndex = 0; modelIndex < models.Length; modelIndex++)
-                    {
-                        var props = listModelProps[modelIndex];
-                        var model = models[modelIndex];
-
-                        // Tìm thuộc tính trong class T có tên trùng với tiêu đề cột (không phân biệt chữ hoa/thường).
-                        var prop = props.FirstOrDefault(p =>
-                            string.Equals(p.Name, fieldName, StringComparison.OrdinalIgnoreCase));
-
-                        // Bỏ qua nếu không tìm thấy thuộc tính tương ứng hoặc không thể ghi
-                        if (prop == null || !prop.CanWrite)
-                            continue;
-
-                        object? valueConverted = ConvertToPropertyType(prop.PropertyType, fieldValue);
-                        prop.SetValue(model, valueConverted);
-                    }
+                    object? valueConverted = ConvertToPropertyType(prop.PropertyType, fieldValue);
+                    prop.SetValue(model, valueConverted);
                 }
             }
 

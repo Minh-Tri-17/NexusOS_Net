@@ -36,6 +36,7 @@ namespace NexusOS.MB
         public bool AllowPaging { get; set; } = true;
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
+        public bool IsExport { get; set; } = false;
         public Guid? IdMain { get; set; }
         public List<FilterItemModel> Filters { get; set; } = new List<FilterItemModel>();
     }

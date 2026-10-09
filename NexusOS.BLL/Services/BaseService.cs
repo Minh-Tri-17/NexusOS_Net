@@ -1,4 +1,5 @@
 ﻿using ClosedXML.Excel;
+using ExcelDataReader;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -7,7 +8,6 @@ using NexusOS.DAL;
 using NexusOS.DAL.Models;
 using NexusOS.MB;
 using NexusOS.Util;
-using NPOI.XSSF.UserModel;
 
 namespace NexusOS.BLL.Services
 {
@@ -33,7 +33,7 @@ namespace NexusOS.BLL.Services
         public virtual async Task<APIResults<bool>> Create(TModel request)
         {
             if (request == null)
-                return APIResults<bool>.Failure(_localizer[Messages.UpdateFailure]);
+                return APIResults<bool>.Failure(_localizer[Messages.CreateFailure]);
 
             // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -50,23 +50,21 @@ namespace NexusOS.BLL.Services
 
                 await AfterSaveAsync(request, entity);
 
-                var result = await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync(); // Lưu vĩnh viễn mọi thay đổi trong giao dịch vào cơ sở dữ liệu một cách an toàn.
 
-                if (result > 0)
-                {
-                    return APIResults<bool>.Success(true, _localizer[Messages.CreateSuccess]);
-                }
-                else
-                {
-                    return APIResults<bool>.Failure(_localizer[Messages.CreateFailure]);
-                }
+                return APIResults<bool>.Success(true, _localizer[Messages.CreateSuccess]);
             }
             catch
             {
-                await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
-                throw;
+                try
+                {
+                    await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
+                }
+                catch { }
+
+                return APIResults<bool>.Failure(_localizer[Messages.CreateFailure]);
             }
         }
 
@@ -94,23 +92,21 @@ namespace NexusOS.BLL.Services
 
                 await AfterSaveAsync(request, entity);
 
-                var result = await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync(); // Lưu vĩnh viễn mọi thay đổi trong giao dịch vào cơ sở dữ liệu một cách an toàn.
 
-                if (result > 0)
-                {
-                    return APIResults<bool>.Success(true, _localizer[Messages.UpdateSuccess]);
-                }
-                else
-                {
-                    return APIResults<bool>.Failure(_localizer[Messages.UpdateFailure]);
-                }
+                return APIResults<bool>.Success(true, _localizer[Messages.UpdateSuccess]);
             }
             catch
             {
-                await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
-                throw;
+                try
+                {
+                    await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
+                }
+                catch { }
+
+                return APIResults<bool>.Failure(_localizer[Messages.UpdateFailure]);
             }
         }
 
@@ -118,24 +114,38 @@ namespace NexusOS.BLL.Services
 
         protected virtual Task AfterSaveAsync(TModel request, TEntity entity) => Task.CompletedTask;
 
-        public virtual async Task<APIResults<bool>> SoftDelete(string ids)
+        public virtual async Task<APIResults<bool>> SoftDelete(List<Guid> listId)
         {
-            var listIds = ids.Split(',').Select(id => DataHelpers.GetGuid(id)).ToList();
-            var result = await _dbSet
-                .Where(s => listIds.Contains(s.Id))
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDelete, true));
+            if (listId == null || listId.Count == 0)
+                return APIResults<bool>.Failure(_localizer[Messages.DeleteFailure]);
+
+            int result = 0;
+
+            foreach (var listSelectId in listId.Chunk(1000))
+            {
+                result += await _dbSet
+                   .Where(s => listSelectId.Contains(s.Id))
+                   .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDelete, true));
+            }
 
             return result > 0
                 ? APIResults<bool>.Success(true, _localizer[Messages.DeleteSuccess])
                 : APIResults<bool>.Failure(_localizer[Messages.DeleteFailure]);
         }
 
-        public virtual async Task<APIResults<bool>> HardDelete(string ids)
+        public virtual async Task<APIResults<bool>> HardDelete(List<Guid> listId)
         {
-            var listIds = ids.Split(',').Select(id => DataHelpers.GetGuid(id)).ToList();
-            var result = await _dbSet
-                .Where(s => listIds.Contains(s.Id))
-                .ExecuteDeleteAsync();
+            if (listId == null || listId.Count == 0)
+                return APIResults<bool>.Failure(_localizer[Messages.DeleteFailure]);
+
+            int result = 0;
+
+            foreach (var listSelectId in listId.Chunk(1000))
+            {
+                result += await _dbSet
+                    .Where(s => listSelectId.Contains(s.Id))
+                    .ExecuteDeleteAsync();
+            }
 
             return result > 0
                 ? APIResults<bool>.Success(true, _localizer[Messages.DeleteSuccess])
@@ -200,24 +210,39 @@ namespace NexusOS.BLL.Services
             if (fileImport == null || fileImport.Length <= 0)
                 return APIResults<bool>.Failure(AppConstants.FileNotFound);
 
-            using var stream = new MemoryStream();
-            await fileImport.CopyToAsync(stream);
-            stream.Position = 0;
-
-            using var workbook = new XSSFWorkbook(stream);
-            var sheet = workbook.GetSheetAt(0);
-            var headerRow = sheet.GetRow(0);
-
             var listModel = new List<TModel>();
 
-            for (int i = 1; i <= sheet.LastRowNum; i++)
-            {
-                var row = sheet.GetRow(i);
-                // Bỏ qua nếu hàng trống
-                if (row == null || row.Cells.All(c => c.CellType == NPOI.SS.UserModel.CellType.Blank))
-                    continue;
+            using var stream = fileImport.OpenReadStream();
+            using var reader = ExcelReaderFactory.CreateReader(stream);
 
-                TModel model = DataHelpers.CopyImport<TModel>(headerRow, row);
+            // Đọc dòng Header đầu tiên
+            if (!reader.Read())
+                return APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
+
+            var headers = new List<string>();
+
+            for (int col = 0; col < reader.FieldCount; col++)
+            {
+                headers.Add(reader.GetValue(col)?.ToString()?.Trim() ?? string.Empty);
+            }
+
+            while (reader.Read())
+            {
+                bool isEmptyRow = true;
+
+                for (int col = 0; col < reader.FieldCount; col++)
+                {
+                    var val = reader.GetValue(col);
+                    if (val != null && !string.IsNullOrWhiteSpace(val.ToString()))
+                    {
+                        isEmptyRow = false;
+                        break;
+                    }
+                }
+
+                if (isEmptyRow) continue;
+
+                TModel model = DataHelpers.CopyImport<TModel>(headers, reader);
                 listModel.Add(model);
             }
 
@@ -228,49 +253,82 @@ namespace NexusOS.BLL.Services
                 .Where(id => id != Guid.Empty)
                 .ToList();
 
-            FilterModel filter = new FilterModel()
+            var listEntity = new List<TEntity>();
+
+            if (listModelID != null && listModelID.Count > 0)
             {
-                Filters = new List<FilterItemModel>()
+                foreach (var listSelectModelID in listModelID.Chunk(1000))
                 {
-                    new FilterItemModel
+                    FilterModel filter = new FilterModel()
                     {
-                        FilterName = AppConstants.Id,
-                        FilterType = FilterType.Guid.ToString(),
-                        FilterOperator = FilterOperator.Contains.ToString(),
-                        FilterValue = string.Join(',', listModelID)
-                    }
+                        Filters = new List<FilterItemModel>()
+                        {
+                            new FilterItemModel
+                            {
+                                FilterName = AppConstants.Id,
+                                FilterType = FilterType.Guid.ToString(),
+                                FilterOperator = FilterOperator.Contains.ToString(),
+                                FilterValue = string.Join(',', listSelectModelID)
+                            }
+                        }
+                    };
+
+                    var listResult = await _dbSet
+                        .ApplySoftDelete(filter)
+                        .ApplyCommonFilters(filter)
+                        .ToListAsync();
+
+                    listEntity.AddRange(listResult);
                 }
-            };
-
-            IQueryable<TEntity> query = _dbSet
-                .ApplySoftDelete(filter)
-                .ApplyCommonFilters(filter);
-
-            var listEntity = listModelID != null && listModelID.Count() > 0
-                ? await query.ToListAsync() : new List<TEntity>();
+            }
 
             // Map từ Model sang Entity và gắn UserId để Audit
             DataHelpers.MapListAudit<TModel, TEntity>(listModel, listEntity, _currentUser.UserId, _dbSet);
 
+            // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // Tắt theo dõi thay đổi để tăng tốc độ nạp dữ liệu
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-                if (listModelID == null || listModelID.Count() <= 0)
-                    await _dbSet.AddRangeAsync(listEntity);
+                bool isInsertOnly = listModelID == null || listModelID.Count == 0;
 
-                // Kích hoạt quét thay đổi THỦ CÔNG đúng 1 lần duy nhất cho toàn bộ danh sách
-                _context.ChangeTracker.DetectChanges();
+                foreach (var listSelectEntity in listEntity.Chunk(1000))
+                {
+                    if (isInsertOnly)
+                    {
+                        // Thêm đúng batch hiện tại thay vì toàn bộ listEntity
+                        await _dbSet.AddRangeAsync(listSelectEntity);
+                    }
+                    else
+                    {
+                        // Đảm bảo batch được track lại nếu có update
+                        _dbSet.UpdateRange(listSelectEntity);
+                    }
 
-                var result = await _context.SaveChangesAsync();
+                    // Kích hoạt quét thay đổi THỦ CÔNG đúng 1 lần duy nhất cho toàn bộ danh sách
+                    _context.ChangeTracker.DetectChanges();
 
-                // Xóa cache tracker sau khi đã lưu thành công để giải phóng RAM
-                _context.ChangeTracker.Clear();
+                    await _context.SaveChangesAsync();
 
-                return result > 0
-                    ? APIResults<bool>.Success(true, _localizer[Messages.ImportSuccess])
-                    : APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
+                    // Xóa cache tracker sau khi đã lưu thành công để giải phóng RAM
+                    _context.ChangeTracker.Clear();
+                }
+
+                await transaction.CommitAsync();
+
+                return APIResults<bool>.Success(true, _localizer[Messages.ImportSuccess]);
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
+                }
+                catch { }
+
+                return APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
             }
             finally
             {

@@ -67,7 +67,7 @@ namespace NexusOS.BLL.Services
 
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
                 new Claim(ClaimTypes.Name, DataHelpers.GetString(user.Username)),
                 new Claim(ClaimTypes.GivenName, DataHelpers.GetString(employeeName)),
                 new Claim("UserID", DataHelpers.GetString(user.Id.ToString())),
@@ -212,7 +212,7 @@ namespace NexusOS.BLL.Services
             var otpString = otp.ToString("D6");
 
             // 2. Tạo salt + hash OTP
-            var salt = Guid.NewGuid().ToString();
+            var salt = Guid.CreateVersion7().ToString();
             using var sha = SHA256.Create();
             var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(otpString + salt));
             var hashed = Convert.ToBase64String(hashBytes);

@@ -16,6 +16,8 @@ using Serilog;
 using Serilog.Events;
 using System.Globalization;
 
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
 var builder = WebApplication.CreateBuilder(args);
 
 #region DI & Database
