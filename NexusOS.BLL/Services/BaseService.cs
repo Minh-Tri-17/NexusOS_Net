@@ -307,9 +307,6 @@ namespace NexusOS.BLL.Services
                         _dbSet.UpdateRange(listSelectEntity);
                     }
 
-                    // Kích hoạt quét thay đổi THỦ CÔNG đúng 1 lần duy nhất cho toàn bộ danh sách
-                    _context.ChangeTracker.DetectChanges();
-
                     await _context.SaveChangesAsync();
 
                     // Xóa cache tracker sau khi đã lưu thành công để giải phóng RAM

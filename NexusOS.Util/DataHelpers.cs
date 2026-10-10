@@ -196,15 +196,15 @@ namespace NexusOS.Util
                 var codeValue = codeProp.GetValue(destination) as string;
                 if (string.IsNullOrEmpty(codeValue))
                 {
-                    var nameProp = destinationProps.FirstOrDefault(p =>
-                        (p.Name == "Name" || p.Name == $"{tableName}Name") && p.PropertyType == typeof(string));
-                    var nameValue = nameProp?.GetValue(destination) as string;
-
-                    string prefix = GeneratePrefixFromName(nameValue, tableName);
-                    string nextCode = $"{prefix}01";
-
                     if (dbSet != null)
                     {
+                        var nameProp = destinationProps.FirstOrDefault(p =>
+                            (p.Name == "Name" || p.Name == $"{tableName}Name") && p.PropertyType == typeof(string));
+                        var nameValue = nameProp?.GetValue(destination) as string;
+
+                        string prefix = GeneratePrefixFromName(nameValue, tableName);
+                        string nextCode = $"{prefix}01";
+
                         // Lấy danh sách các mã đã có bắt đầu bằng prefix
                         var listCode = new List<string>();
 
@@ -217,13 +217,13 @@ namespace NexusOS.Util
 
                         if (inMemoryList != null)
                         {
-                            var listLocalCode = inMemoryList
+                            var listInMemoryCode = inMemoryList
                                 .Where(d => d != destination)
                                 .Select(d => codeProp.GetValue(d) as string)
                                 .OfType<string>()
                                 .Where(c => c.StartsWith(prefix));
 
-                            listCode.AddRange(listLocalCode);
+                            listCode.AddRange(listInMemoryCode);
                         }
 
                         int maxIndex = 0;
@@ -301,23 +301,32 @@ namespace NexusOS.Util
             if (sourceIdProp == null || destinationIdProp == null)
                 return;
 
+            // Chuyển danh sách destinationList thành Dictionary để tra cứu nhanh theo Id
+            // (Khi chuyển thành Dictionary thì khi update item trong Dictionary thì list ban đầu cũng sẽ được cập nhật)
+            var destinationDict = new Dictionary<Guid, TDestination>();
+            foreach (var destination in destinationList)
+            {
+                var id = GetGuid(destinationIdProp.GetValue(destination));
+                if (id != Guid.Empty)
+                    destinationDict[id] = destination;
+            }
+
             foreach (var source in sourceList)
             {
-                var sourceId = sourceIdProp.GetValue(source);
+                var sourceId = GetGuid(sourceIdProp.GetValue(source));
 
-                var destination = destinationList
-                    .FirstOrDefault(d => destinationIdProp.GetValue(d)?.Equals(sourceId) == true);
+                TDestination? destination = null;
+
+                if (sourceId != Guid.Empty)
+                    destinationDict.TryGetValue(sourceId, out destination);
 
                 if (destination == null)
                 {
                     destination = new TDestination();
-                    MapAudit(source, destination, userId, dbSet, destinationList);
                     destinationList.Add(destination);
                 }
-                else
-                {
-                    MapAudit(source, destination, userId, dbSet, destinationList);
-                }
+
+                MapAudit(source, destination, userId, dbSet, destinationList);
             }
         }
 
@@ -339,9 +348,7 @@ namespace NexusOS.Util
                     .ToArray();
 
                 if (initials.Length > 0)
-                {
                     return new string(initials);
-                }
             }
 
             // Fallback nếu Name rỗng: lấy 2 ký tự đầu của tableName
