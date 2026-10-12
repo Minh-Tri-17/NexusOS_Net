@@ -38,16 +38,16 @@ namespace NexusOS.API.Controllers
         }
 
         [HttpDelete(nameof(SoftDelete))]
-        public virtual async Task<ActionResult> SoftDelete([FromBody] List<Guid> listId)
+        public virtual async Task<ActionResult> SoftDelete([FromBody] List<Guid> ids)
         {
-            var result = await _service.SoftDelete(listId);
+            var result = await _service.SoftDelete(ids);
             return Ok(result);
         }
 
         [HttpDelete(nameof(HardDelete))]
-        public virtual async Task<ActionResult> HardDelete([FromBody] List<Guid> listId)
+        public virtual async Task<ActionResult> HardDelete([FromBody] List<Guid> ids)
         {
-            var result = await _service.HardDelete(listId);
+            var result = await _service.HardDelete(ids);
             return Ok(result);
         }
 

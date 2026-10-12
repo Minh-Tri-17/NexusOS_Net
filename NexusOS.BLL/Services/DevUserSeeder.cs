@@ -14,16 +14,16 @@ namespace NexusOS.BLL.Services
 
         public void Seed()
         {
-            var listId = new List<Guid>()
+            var ids = new List<Guid>()
             {
                 new Guid("00000000-0000-0000-0100-000000000000"),
                 new Guid("00000000-0000-0000-0200-000000000000"),
                 new Guid("00000000-0000-0000-0300-000000000000"),
             };
 
-            if (_context.Users.Any(u => listId.Contains(u.Id))) return;
+            if (_context.Users.Any(u => ids.Contains(u.Id))) return;
 
-            var listUser = new List<User>()
+            var users = new List<User>()
             {
                 new  User
                 {
@@ -48,7 +48,7 @@ namespace NexusOS.BLL.Services
                 },
             };
 
-            _context.Users.AddRange(listUser);
+            _context.Users.AddRange(users);
             _context.SaveChanges();
         }
     }

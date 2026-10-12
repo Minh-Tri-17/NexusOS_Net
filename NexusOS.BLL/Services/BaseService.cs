@@ -35,10 +35,11 @@ namespace NexusOS.BLL.Services
             if (request == null)
                 return APIResults<bool>.Failure(_localizer[Messages.CreateFailure]);
 
-            // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
                 TEntity entity = new TEntity();
 
                 await BeforeSaveAsync(request, entity, true);
@@ -58,12 +59,6 @@ namespace NexusOS.BLL.Services
             }
             catch
             {
-                try
-                {
-                    await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
-                }
-                catch { }
-
                 return APIResults<bool>.Failure(_localizer[Messages.CreateFailure]);
             }
         }
@@ -73,14 +68,15 @@ namespace NexusOS.BLL.Services
             if (request == null)
                 return APIResults<bool>.Failure(_localizer[Messages.UpdateFailure]);
 
-            // 1. Lấy Id từ request bằng dynamic để tránh lỗi biên dịch do TModel chưa xác định có Id hay không
-            var requestId = (request as dynamic)?.Id?.ToString();
-            var id = DataHelpers.GetGuid(requestId);
-
-            // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // Lấy Id từ request bằng dynamic để tránh lỗi biên dịch do TModel chưa xác định có Id hay không
+                var requestId = (request as dynamic)?.Id?.ToString();
+                var id = DataHelpers.GetGuid(requestId);
+
+                // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
                 TEntity entity = await _dbSet.FindAsync(id);
                 if (entity == null)
                     return APIResults<bool>.Failure(_localizer[Messages.NotFoundUpdate]);
@@ -100,12 +96,6 @@ namespace NexusOS.BLL.Services
             }
             catch
             {
-                try
-                {
-                    await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
-                }
-                catch { }
-
                 return APIResults<bool>.Failure(_localizer[Messages.UpdateFailure]);
             }
         }
@@ -114,17 +104,17 @@ namespace NexusOS.BLL.Services
 
         protected virtual Task AfterSaveAsync(TModel request, TEntity entity) => Task.CompletedTask;
 
-        public virtual async Task<APIResults<bool>> SoftDelete(List<Guid> listId)
+        public virtual async Task<APIResults<bool>> SoftDelete(List<Guid> ids)
         {
-            if (listId == null || listId.Count == 0)
+            if (ids == null || ids.Count == 0)
                 return APIResults<bool>.Failure(_localizer[Messages.DeleteFailure]);
 
             int result = 0;
 
-            foreach (var listSelectId in listId.Chunk(1000))
+            foreach (var selectIds in ids.Chunk(1000))
             {
                 result += await _dbSet
-                   .Where(s => listSelectId.Contains(s.Id))
+                   .Where(s => selectIds.Contains(s.Id))
                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDelete, true));
             }
 
@@ -133,17 +123,17 @@ namespace NexusOS.BLL.Services
                 : APIResults<bool>.Failure(_localizer[Messages.DeleteFailure]);
         }
 
-        public virtual async Task<APIResults<bool>> HardDelete(List<Guid> listId)
+        public virtual async Task<APIResults<bool>> HardDelete(List<Guid> ids)
         {
-            if (listId == null || listId.Count == 0)
+            if (ids == null || ids.Count == 0)
                 return APIResults<bool>.Failure(_localizer[Messages.DeleteFailure]);
 
             int result = 0;
 
-            foreach (var listSelectId in listId.Chunk(1000))
+            foreach (var selectIds in ids.Chunk(1000))
             {
                 result += await _dbSet
-                    .Where(s => listSelectId.Contains(s.Id))
+                    .Where(s => selectIds.Contains(s.Id))
                     .ExecuteDeleteAsync();
             }
 
@@ -174,10 +164,10 @@ namespace NexusOS.BLL.Services
             var totalCount = await query.CountAsync();
             query = query.ApplyPaging(filter);
 
-            var list = await query.ToListAsync();
-            var listModel = DataHelpers.MappingList<TEntity, TModel>(list);
+            var entities = await query.ToListAsync();
+            var models = DataHelpers.MappingList<TEntity, TModel>(entities);
 
-            var pageResult = new PagingResults<TModel>(listModel, totalCount, filter.PageIndex, filter.PageSize);
+            var pageResult = new PagingResults<TModel>(models, totalCount, filter.PageIndex, filter.PageSize);
 
             return APIResults<PagingResults<TModel>>.Success(pageResult, _localizer[Messages.GetListResultSuccess]);
         }
@@ -193,8 +183,8 @@ namespace NexusOS.BLL.Services
             var worksheet = workbook.Worksheets.Add(sheetName);
 
             // Chuyển Model về Entity để DataHelpers xử lý export
-            var listEntity = DataHelpers.MappingList<TModel, TEntity>(items);
-            DataHelpers.CopyExport(worksheet, listEntity);
+            var entities = DataHelpers.MappingList<TModel, TEntity>(items);
+            DataHelpers.CopyExport(worksheet, entities);
 
             using var stream = new MemoryStream();
             workbook.SaveAs(stream);
@@ -210,54 +200,58 @@ namespace NexusOS.BLL.Services
             if (fileImport == null || fileImport.Length <= 0)
                 return APIResults<bool>.Failure(AppConstants.FileNotFound);
 
-            var listModel = new List<TModel>();
-
-            using var stream = fileImport.OpenReadStream();
-            using var reader = ExcelReaderFactory.CreateReader(stream);
-
-            // Đọc dòng Header đầu tiên
-            if (!reader.Read())
-                return APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
-
-            var headers = new List<string>();
-
-            for (int col = 0; col < reader.FieldCount; col++)
+            try
             {
-                headers.Add(reader.GetValue(col)?.ToString()?.Trim() ?? string.Empty);
-            }
+                var models = new List<TModel>();
 
-            while (reader.Read())
-            {
-                bool isEmptyRow = true;
-
-                for (int col = 0; col < reader.FieldCount; col++)
+                using var stream = fileImport.OpenReadStream();
+                using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
-                    var val = reader.GetValue(col);
-                    if (val != null && !string.IsNullOrWhiteSpace(val.ToString()))
+                    // Đọc dòng Header đầu tiên
+                    if (!reader.Read())
+                        return APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
+
+                    var headers = new List<string>();
+
+                    for (int col = 0; col < reader.FieldCount; col++)
                     {
-                        isEmptyRow = false;
-                        break;
+                        headers.Add(reader.GetValue(col)?.ToString()?.Trim() ?? string.Empty);
+                    }
+
+                    while (reader.Read())
+                    {
+                        bool isEmptyRow = true;
+
+                        for (int col = 0; col < reader.FieldCount; col++)
+                        {
+                            var val = reader.GetValue(col);
+                            if (val != null && !string.IsNullOrWhiteSpace(val.ToString()))
+                            {
+                                isEmptyRow = false;
+                                break;
+                            }
+                        }
+
+                        if (isEmptyRow) continue;
+
+                        TModel model = DataHelpers.CopyImport<TModel>(headers, reader);
+                        models.Add(model);
                     }
                 }
 
-                if (isEmptyRow) continue;
+                var idProp = typeof(TModel).GetProperty(AppConstants.Id);
+                if (idProp == null)
+                    return APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
 
-                TModel model = DataHelpers.CopyImport<TModel>(headers, reader);
-                listModel.Add(model);
-            }
+                var modelIds = models
+                    .Select(x => DataHelpers.GetGuid(idProp.GetValue(x)))
+                    .Where(id => id != Guid.Empty)
+                    .Distinct()
+                    .ToList();
 
-            var idProp = typeof(TModel).GetProperty(AppConstants.Id);
-            var listModelID = listModel
-                .Select(s => idProp?.GetValue(s))
-                .OfType<Guid>()
-                .Where(id => id != Guid.Empty)
-                .ToList();
+                var existingEntities = new List<TEntity>();
 
-            var listEntity = new List<TEntity>();
-
-            if (listModelID != null && listModelID.Count > 0)
-            {
-                foreach (var listSelectModelID in listModelID.Chunk(1000))
+                foreach (var selectModelIds in modelIds.Chunk(1000))
                 {
                     FilterModel filter = new FilterModel()
                     {
@@ -268,69 +262,84 @@ namespace NexusOS.BLL.Services
                                 FilterName = AppConstants.Id,
                                 FilterType = FilterType.Guid.ToString(),
                                 FilterOperator = FilterOperator.Contains.ToString(),
-                                FilterValue = string.Join(',', listSelectModelID)
+                                FilterValue = string.Join(',', selectModelIds)
                             }
                         }
                     };
 
-                    var listResult = await _dbSet
+                    var results = await _dbSet.AsNoTracking()
                         .ApplySoftDelete(filter)
                         .ApplyCommonFilters(filter)
                         .ToListAsync();
 
-                    listEntity.AddRange(listResult);
+                    existingEntities.AddRange(results);
                 }
-            }
 
-            // Map từ Model sang Entity và gắn UserId để Audit
-            DataHelpers.MapListAudit<TModel, TEntity>(listModel, listEntity, _currentUser.UserId, _dbSet);
+                // Chỉ những Id thực sự có trong DB mới là Update
+                var existingIds = existingEntities
+                    .Select(e => e.Id)
+                    .ToHashSet();
 
-            // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                // Tắt theo dõi thay đổi để tăng tốc độ nạp dữ liệu
-                _context.ChangeTracker.AutoDetectChangesEnabled = false;
+                var entities = existingEntities.ToList();
 
-                bool isInsertOnly = listModelID == null || listModelID.Count == 0;
+                // Map từ Model sang Entity và gắn UserId để Audit
+                DataHelpers.MapListAudit<TModel, TEntity>(models, entities, _currentUser.UserId, _dbSet);
 
-                foreach (var listSelectEntity in listEntity.Chunk(1000))
+                var insertEntities = entities
+                    .Where(e => !existingIds.Contains(e.Id))
+                    .ToList();
+
+                var updateEntities = entities
+                    .Where(e => existingIds.Contains(e.Id))
+                    .ToList();
+
+                var originalAutoDetect = _context.ChangeTracker.AutoDetectChangesEnabled;
+
+                try
                 {
-                    if (isInsertOnly)
+                    // Bắt đầu một giao dịch mới để nhóm các thao tác cơ sở dữ liệu lại với nhau.
+                    await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                    // Tắt theo dõi thay đổi để tăng tốc độ nạp dữ liệu
+                    _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+                    const int batchSize = 1000;
+
+                    // Insert theo từng batch để tránh lỗi OutOfMemory
+                    foreach (var batch in insertEntities.Chunk(batchSize))
                     {
-                        // Thêm đúng batch hiện tại thay vì toàn bộ listEntity
-                        await _dbSet.AddRangeAsync(listSelectEntity);
-                    }
-                    else
-                    {
-                        // Đảm bảo batch được track lại nếu có update
-                        _dbSet.UpdateRange(listSelectEntity);
+                        _dbSet.AddRange(batch);
+
+                        await _context.SaveChangesAsync();
+
+                        // Xóa cache tracker sau khi đã lưu thành công để giải phóng RAM
+                        _context.ChangeTracker.Clear();
                     }
 
-                    await _context.SaveChangesAsync();
+                    // Update theo từng batch để tránh lỗi OutOfMemory
+                    foreach (var batch in updateEntities.Chunk(batchSize))
+                    {
+                        _dbSet.UpdateRange(batch);
 
-                    // Xóa cache tracker sau khi đã lưu thành công để giải phóng RAM
-                    _context.ChangeTracker.Clear();
+                        await _context.SaveChangesAsync();
+
+                        // Xóa cache tracker sau khi đã lưu thành công để giải phóng RAM
+                        _context.ChangeTracker.Clear();
+                    }
+
+                    await transaction.CommitAsync();
+
+                    return APIResults<bool>.Success(true, _localizer[Messages.ImportSuccess]);
                 }
-
-                await transaction.CommitAsync();
-
-                return APIResults<bool>.Success(true, _localizer[Messages.ImportSuccess]);
+                finally
+                {
+                    // Khôi phục lại trạng thái mặc định của ChangeTracker cho các tác vụ khác
+                    _context.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetect;
+                }
             }
             catch (Exception)
             {
-                try
-                {
-                    await transaction.RollbackAsync(); // Hủy bỏ toàn bộ các thay đổi trong giao dịch khi xảy ra lỗi.
-                }
-                catch { }
-
                 return APIResults<bool>.Failure(_localizer[Messages.ImportFailure]);
-            }
-            finally
-            {
-                // Khôi phục lại trạng thái mặc định của ChangeTracker cho các tác vụ khác
-                _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
         }
     }

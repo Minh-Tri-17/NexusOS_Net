@@ -50,14 +50,14 @@ namespace NexusOS.Util
                         }
                     case (nameof(FilterType.Guid), nameof(FilterOperator.Contains)):
                         {
-                            var listGuids = DataHelpers.GetString(filterValue)
+                            var guids = DataHelpers.GetString(filterValue)
                                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
                                 .Select(id => DataHelpers.GetGuid(id.Trim()))
                                 .Where(guid => guid != Guid.Empty)
                                 .ToList();
 
-                            if (listGuids.Any())
-                                query = query.Where(s => listGuids.Contains(EF.Property<Guid>(s!, propName)));
+                            if (guids.Any())
+                                query = query.Where(s => guids.Contains(EF.Property<Guid>(s!, propName)));
 
                             break;
                         }

@@ -2,6 +2,7 @@
 using ClosedXML.Excel;
 using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace NexusOS.Util
@@ -162,7 +163,8 @@ namespace NexusOS.Util
         /// <param name="destination"></param>
         /// <param name="userName"></param>
         public static void MapAudit<TSource, TDestination>(TSource source, TDestination destination,
-            Guid? currentUser, DbSet<TDestination>? dbSet = null, IEnumerable<TDestination>? inMemoryList = null)
+            Guid? currentUser, DbSet<TDestination>? dbSet = null, List<string>? inMemoryList = null,
+            Dictionary<string, int>? codeCache = null)
             where TDestination : class
         {
             if (source == null || destination == null || _mapper == null)
@@ -186,15 +188,13 @@ namespace NexusOS.Util
             // Sinh mã code tự động nếu là bản ghi mới và thuộc tính Code tồn tại
             var tableName = GetString(GetTableName<TDestination>());
             if (tableName != null && tableName.StartsWith("Cat"))
-            {
                 tableName = tableName.Substring(3);
-            }
 
             var codeProp = destinationProps.FirstOrDefault(p => p.Name == $"{tableName}{AppConstants.Code}" && p.PropertyType == typeof(string));
             if (codeProp != null)
             {
                 var codeValue = codeProp.GetValue(destination) as string;
-                if (string.IsNullOrEmpty(codeValue))
+                if (isNew || string.IsNullOrEmpty(codeValue))
                 {
                     if (dbSet != null)
                     {
@@ -203,45 +203,61 @@ namespace NexusOS.Util
                         var nameValue = nameProp?.GetValue(destination) as string;
 
                         string prefix = GeneratePrefixFromName(nameValue, tableName);
-                        string nextCode = $"{prefix}01";
 
-                        // Lấy danh sách các mã đã có bắt đầu bằng prefix
-                        var listCode = new List<string>();
+                        string nextCode;
 
-                        var listExistingCode = dbSet
-                            .Where(e => EF.Property<string>(e, codeProp.Name).StartsWith(prefix) && EF.Property<bool?>(e!, AppConstants.IsDelete) != true)
-                            .Select(e => EF.Property<string>(e, codeProp.Name))
-                            .ToList();
-
-                        listCode.AddRange(listExistingCode);
-
-                        if (inMemoryList != null)
+                        // Thường dùng cho import
+                        if (codeCache != null && inMemoryList != null)
                         {
-                            var listInMemoryCode = inMemoryList
-                                .Where(d => d != destination)
-                                .Select(d => codeProp.GetValue(d) as string)
-                                .OfType<string>()
-                                .Where(c => c.StartsWith(prefix));
-
-                            listCode.AddRange(listInMemoryCode);
-                        }
-
-                        int maxIndex = 0;
-
-                        foreach (var code in listCode)
-                        {
-                            if (!string.IsNullOrEmpty(code) && code.Length > prefix.Length)
+                            // Nếu không có cache thì lấy từ list get từ DB hoặc list get từ file excel
+                            if (!codeCache.TryGetValue(prefix, out int maxIndex))
                             {
+                                maxIndex = 0;
+
+                                foreach (var code in inMemoryList)
+                                {
+                                    if (string.IsNullOrEmpty(code) || !code.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                                        continue;
+
+                                    var numberPart = code.Substring(prefix.Length);
+
+                                    if (int.TryParse(numberPart, out int parsedNum) && parsedNum > maxIndex)
+                                        maxIndex = parsedNum;
+                                }
+                            }
+
+                            maxIndex++;
+
+                            codeCache[prefix] = maxIndex;
+
+                            nextCode = $"{prefix}{maxIndex:D6}";
+                        }
+                        // Thường dùng cho create hoặc update
+                        else
+                        {
+                            int maxIndex = 0;
+
+                            var existingCodes = dbSet.AsNoTracking()
+                                .Where(e => EF.Property<string>(e, codeProp.Name).StartsWith(prefix) && EF.Property<bool?>(e!, AppConstants.IsDelete) != true)
+                                .Select(e => EF.Property<string>(e, codeProp.Name))
+                                .ToList();
+
+                            foreach (var code in existingCodes)
+                            {
+                                if (string.IsNullOrEmpty(code) || !code.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                                    continue;
+
                                 var numberPart = code.Substring(prefix.Length);
 
                                 if (int.TryParse(numberPart, out int parsedNum) && parsedNum > maxIndex)
                                     maxIndex = parsedNum;
                             }
+
+                            nextCode = $"{prefix}{maxIndex + 1:D6}";
                         }
 
-                        nextCode = $"{prefix}{(maxIndex + 1):D2}";
-
                         codeProp.SetValue(destination, nextCode);
+                        inMemoryList?.Add(nextCode);
                     }
                     else
                     {
@@ -255,11 +271,14 @@ namespace NexusOS.Util
             }
 
             // Sinh tự động thông tin khi tạo mới hoặc cập nhật
+            var now = DateTime.Now;
+            var currentUserId = GetGuid(currentUser);
+
             if (isNew)
             {
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.Id)?.SetValue(destination, Guid.CreateVersion7());
-                destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.SetValue(destination, DateTime.Now);
-                destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedBy)?.SetValue(destination, GetGuid(currentUser));
+                destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.SetValue(destination, now);
+                destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedBy)?.SetValue(destination, currentUserId);
 
                 // Tự động thiết lập thuộc tính IsDelete về false nếu nó tồn tại
                 var isDeleteProp = destinationProps.FirstOrDefault(p => p.Name == AppConstants.IsDelete);
@@ -267,8 +286,8 @@ namespace NexusOS.Util
             }
             else
             {
-                destinationProps.FirstOrDefault(p => p.Name == AppConstants.UpdatedAt)?.SetValue(destination, DateTime.Now);
-                destinationProps.FirstOrDefault(p => p.Name == AppConstants.UpdatedBy)?.SetValue(destination, GetGuid(currentUser));
+                destinationProps.FirstOrDefault(p => p.Name == AppConstants.UpdatedAt)?.SetValue(destination, now);
+                destinationProps.FirstOrDefault(p => p.Name == AppConstants.UpdatedBy)?.SetValue(destination, currentUserId);
 
                 var valueDateCreate = destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.GetValue(destination);
                 destinationProps.FirstOrDefault(p => p.Name == AppConstants.CreatedAt)?.SetValue(destination, valueDateCreate);
@@ -304,12 +323,35 @@ namespace NexusOS.Util
             // Chuyển danh sách destinationList thành Dictionary để tra cứu nhanh theo Id
             // (Khi chuyển thành Dictionary thì khi update item trong Dictionary thì list ban đầu cũng sẽ được cập nhật)
             var destinationDict = new Dictionary<Guid, TDestination>();
+
             foreach (var destination in destinationList)
             {
                 var id = GetGuid(destinationIdProp.GetValue(destination));
+
                 if (id != Guid.Empty)
                     destinationDict[id] = destination;
             }
+
+            var tableName = GetString(GetTableName<TDestination>());
+            if (tableName != null && tableName.StartsWith("Cat"))
+                tableName = tableName.Substring(3);
+
+            var destinationProps = typeof(TDestination).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var codeProp = destinationProps.FirstOrDefault(p => p.Name == $"{tableName}{AppConstants.Code}"
+                || p.Name == AppConstants.Code);
+
+            var allExistingCodes = new List<string>();
+
+            if (codeProp != null && dbSet != null)
+            {
+                // Query toàn bộ code hiện có trong DB 1 lần duy nhất
+                allExistingCodes = dbSet.AsNoTracking()
+                    .Where(e => EF.Property<string>(e, codeProp.Name) != null && EF.Property<bool?>(e!, AppConstants.IsDelete) != true)
+                    .Select(e => EF.Property<string>(e, codeProp.Name))
+                    .ToList();
+            }
+
+            var codeCache = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var source in sourceList)
             {
@@ -326,7 +368,16 @@ namespace NexusOS.Util
                     destinationList.Add(destination);
                 }
 
-                MapAudit(source, destination, userId, dbSet, destinationList);
+                MapAudit(source, destination, userId, dbSet, allExistingCodes, codeCache);
+
+                var mappedId = GetGuid(destinationIdProp.GetValue(destination));
+
+                if (mappedId != Guid.Empty)
+                    destinationDict[mappedId] = destination;
+
+                // Lưu cả Id từ Excel để nhận diện dòng trùng
+                if (sourceId != Guid.Empty)
+                    destinationDict[sourceId] = destination;
             }
         }
 
@@ -366,6 +417,9 @@ namespace NexusOS.Util
 
         #region Import & Export
 
+        // Cache thứ tự PropertyInfo tương ứng với Type và thứ tự tiêu đề cột
+        private static readonly ConcurrentDictionary<string, PropertyInfo?[]> _headerPropsCache = new();
+
         /// <summary>
         /// Dùng để copy dữ liệu từ Excel sang đối tượng dựa vào tiêu đề cột
         /// </summary>
@@ -375,29 +429,27 @@ namespace NexusOS.Util
         public static T CopyImport<T>(List<string> headers, IExcelDataReader reader) where T : new()
         {
             var model = new T();
-            var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            for (int i = 0; i < headers.Count; i++)
+            // Tạo key đại diện cho cả Type lẫn thứ tự cột trong file Excel
+            string cacheKey = $"{typeof(T).FullName}_{string.Join("|", headers)}";
+
+            // Lấy mapping property theo headers từ cache (chỉ tính 1 lần duy nhất cho mỗi mẫu file)
+            var targetProps = _headerPropsCache.GetOrAdd(cacheKey, _ =>
             {
-                string headerName = headers[i];
-                if (string.IsNullOrEmpty(headerName))
-                    continue;
+                var allProps = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                return headers.Select(h => allProps.FirstOrDefault(p =>
+                    string.Equals(p.Name, h, StringComparison.OrdinalIgnoreCase) && p.CanWrite)).ToArray();
+            });
 
-                // Tìm thuộc tính trong class T có tên trùng với tiêu đề cột (không phân biệt chữ hoa/thường).
-                var prop = props.FirstOrDefault(p =>
-                    string.Equals(p.Name, headerName, StringComparison.OrdinalIgnoreCase));
-
+            for (int i = 0; i < targetProps.Length; i++)
+            {
                 // Bỏ qua nếu không tìm thấy thuộc tính tương ứng hoặc không thể ghi
-                if (prop == null || !prop.CanWrite)
-                    continue;
-
                 // Nếu cột vượt quá FieldCount hoặc ô không có data thì bỏ qua, giữ default của entity/model
-                if (i >= reader.FieldCount)
-                    continue;
+                var prop = targetProps[i];
+                if (prop == null || i >= reader.FieldCount) continue;
 
                 var cellValue = reader.GetValue(i);
-                if (cellValue == null || cellValue == DBNull.Value)
-                    continue;
+                if (cellValue == null || cellValue == DBNull.Value) continue;
 
                 object? value = ConvertToPropertyType(prop.PropertyType, cellValue.ToString());
                 prop.SetValue(model, value);
@@ -405,7 +457,13 @@ namespace NexusOS.Util
 
             #region Set default values for system-defined attributes
 
-            ResetSystemFields(model, props);
+            var idProp = typeof(T).GetProperty(AppConstants.Id);
+            if (idProp != null && idProp.PropertyType == typeof(Guid))
+            {
+                var idVal = idProp.GetValue(model);
+                if (idVal == null || GetGuid(idVal) == Guid.Empty)
+                    idProp.SetValue(model, Guid.Empty);
+            }
 
             #endregion
 
@@ -451,7 +509,13 @@ namespace NexusOS.Util
 
             #region Set default values for system-defined attributes
 
-            ResetSystemFields(model, props);
+            var idProp = typeof(T).GetProperty(AppConstants.Id);
+            if (idProp != null && idProp.PropertyType == typeof(Guid))
+            {
+                var idVal = idProp.GetValue(model);
+                if (idVal == null || GetGuid(idVal) == Guid.Empty)
+                    idProp.SetValue(model, Guid.Empty);
+            }
 
             #endregion
 
@@ -467,7 +531,7 @@ namespace NexusOS.Util
         public static object[] CopyImportTemplateMulti(IExcelDataReader reader, params object[] models)
         {
             // Lấy sẵn property list cho từng model để giảm chi phí reflection
-            var listModelProps = models.Select(m => m.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)).ToArray();
+            var modelProps = models.Select(m => m.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)).ToArray();
 
             for (int col = 0; col < reader.FieldCount; col++)
             {
@@ -486,7 +550,7 @@ namespace NexusOS.Util
                 // Lặp qua tất cả model
                 for (int modelIndex = 0; modelIndex < models.Length; modelIndex++)
                 {
-                    var props = listModelProps[modelIndex];
+                    var props = modelProps[modelIndex];
                     var model = models[modelIndex];
 
                     // Tìm thuộc tính trong class T có tên trùng với tiêu đề cột (không phân biệt chữ hoa/thường).
@@ -506,45 +570,26 @@ namespace NexusOS.Util
 
             for (int modelIndex = 0; modelIndex < models.Length; modelIndex++)
             {
-                var props = listModelProps[modelIndex];
-                ResetSystemFields(models[modelIndex], props);
+                var model = models[modelIndex];
+                if (model == null) continue;
+
+                // Chỉ tìm duy nhất thuộc tính Id để chuẩn hóa Guid.Empty nếu chưa có
+                var idProp = modelProps[modelIndex]
+                    .FirstOrDefault(p => p.Name == AppConstants.Id && p.PropertyType == typeof(Guid));
+
+                if (idProp != null)
+                {
+                    var idValue = idProp.GetValue(model);
+                    if (idValue == null || GetGuid(idValue) == Guid.Empty)
+                    {
+                        idProp.SetValue(model, Guid.Empty);
+                    }
+                }
             }
 
             #endregion
 
             return models;
-        }
-
-        /// <summary>
-        /// Gán giá trị mặc định cho các trường hệ thống trong đối tượng
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="obj"></param>
-        /// <param name="props"></param>
-        private static void ResetSystemFields<T>(T obj, PropertyInfo[] props)
-        {
-            var idProp = props.FirstOrDefault(p => p.Name == AppConstants.Id && p.PropertyType == typeof(Guid));
-            var idValue = idProp?.GetValue(obj);
-
-            if (idValue == null || GetGuid(idValue) == Guid.Empty)
-                idProp?.SetValue(obj, Guid.Empty);
-            else
-                idProp?.SetValue(obj, idValue);
-
-            string[] systemFields = {
-                AppConstants.CreatedAt,
-                AppConstants.UpdatedAt,
-                AppConstants.CreatedBy,
-                AppConstants.UpdatedBy,
-                AppConstants.IsDelete,
-                typeof(T).Name + AppConstants.Code
-            };
-
-            foreach (var field in systemFields)
-            {
-                var prop = props.FirstOrDefault(p => p.Name == field);
-                prop?.SetValue(obj, null);
-            }
         }
 
         /// <summary>

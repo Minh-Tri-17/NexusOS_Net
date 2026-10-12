@@ -15,8 +15,9 @@ using NexusOS.Util;
 using Serilog;
 using Serilog.Events;
 using System.Globalization;
+using System.Text;
 
-System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 
