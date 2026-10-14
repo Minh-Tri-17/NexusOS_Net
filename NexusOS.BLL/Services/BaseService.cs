@@ -161,7 +161,10 @@ namespace NexusOS.BLL.Services
                 .ApplySoftDelete(filter)
                 .ApplyCommonFilters(filter);
 
-            var totalCount = await query.CountAsync();
+            var totalCount = 0;
+            if (!DataHelpers.GetBool(filter.IsExport))
+                totalCount = await query.CountAsync();
+
             query = query.ApplyPaging(filter);
 
             var entities = await query.ToListAsync();
@@ -174,25 +177,30 @@ namespace NexusOS.BLL.Services
 
         public virtual async Task<APIResults<byte[]>> Export(FilterModel filter)
         {
-            var dataResult = await GetPaging(filter);
-            var items = dataResult?.Result?.Items ?? new List<TModel>();
+            try
+            {
+                var dataResult = await GetPaging(filter);
+                var items = dataResult?.Result?.Items ?? new List<TModel>();
 
-            using var workbook = new XLWorkbook();
-            // Lấy tên Class Entity làm tên Sheet
-            var sheetName = typeof(TEntity).Name;
-            var worksheet = workbook.Worksheets.Add(sheetName);
+                using var workbook = new XLWorkbook();
 
-            // Chuyển Model về Entity để DataHelpers xử lý export
-            var entities = DataHelpers.MappingList<TModel, TEntity>(items);
-            DataHelpers.CopyExport(worksheet, entities);
+                // Lấy tên Class Entity làm tên Sheet
+                var sheetName = DataHelpers.GetTableName<TEntity>();
+                var worksheet = workbook.Worksheets.Add(sheetName);
 
-            using var stream = new MemoryStream();
-            workbook.SaveAs(stream);
-            var bytes = stream.ToArray();
+                // Chuyển Model về Entity để DataHelpers xử lý export
+                var entities = DataHelpers.MappingList<TModel, TEntity>(items);
+                DataHelpers.CopyExport(worksheet, entities);
 
-            return bytes.Length > 0
-                ? APIResults<byte[]>.Success(bytes, _localizer[Messages.ExportSuccess])
-                : APIResults<byte[]>.Failure(_localizer[Messages.ExportFailure]);
+                using var stream = new MemoryStream();
+                workbook.SaveAs(stream);
+
+                return APIResults<byte[]>.Success(stream.ToArray(), _localizer[Messages.ExportSuccess]);
+            }
+            catch (Exception)
+            {
+                return APIResults<byte[]>.Failure(_localizer[Messages.ExportFailure]);
+            }
         }
 
         public virtual async Task<APIResults<bool>> Import(IFormFile fileImport)
@@ -283,7 +291,7 @@ namespace NexusOS.BLL.Services
                 var entities = existingEntities.ToList();
 
                 // Map từ Model sang Entity và gắn UserId để Audit
-                DataHelpers.MapListAudit<TModel, TEntity>(models, entities, _currentUser.UserId, _dbSet);
+                DataHelpers.MapListAudit(models, entities, _currentUser.UserId, _dbSet);
 
                 var insertEntities = entities
                     .Where(e => !existingIds.Contains(e.Id))

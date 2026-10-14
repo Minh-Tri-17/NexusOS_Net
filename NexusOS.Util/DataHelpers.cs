@@ -381,7 +381,7 @@ namespace NexusOS.Util
             }
         }
 
-        private static string GetTableName<T>()
+        public static string GetTableName<T>()
         {
             return typeof(T).Name;
         }
@@ -651,39 +651,62 @@ namespace NexusOS.Util
         /// <param name="headers"></param>
         public static void CopyExport<T>(IXLWorksheet worksheet, List<T> items)
         {
-            var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetMethod != null
+                    && (!p.GetMethod.IsVirtual || p.GetMethod.IsFinal))
+                .ToArray();
 
-            var headers = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(s => s.GetMethod != null
-                    && (!s.GetMethod.IsVirtual || s.GetMethod.IsFinal))
-                .Select(p => p.Name)
-                .ToList();
+            if (props.Length == 0)
+                return;
 
             // Header row
-            for (int i = 0; i < headers.Count; i++)
+            for (int col = 0; col < props.Length; col++)
+                worksheet.Cell(1, col + 1).Value = props[col].Name;
+
+            var headerRange = worksheet.Range(1, 1, 1, props.Length);
+            headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#0f766e");
+            headerRange.Style.Font.FontColor = XLColor.White;
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Font.Italic = false;
+            headerRange.Style.Font.FontSize = 12;
+            headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            headerRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+
+            worksheet.Row(1).Height = 24;
+            worksheet.SheetView.FreezeRows(1);
+
+            // AutoFit chỉ theo Header
+            worksheet.Columns(1, props.Length).AdjustToContents(1, 1);
+
+            // Điều chỉnh độ rộng theo kiểu dữ liệu
+            for (int col = 0; col < props.Length; col++)
             {
-                var cell = worksheet.Cell(1, i + 1);
-                cell.Value = headers[i];
-                cell.Style.Font.Bold = true;
-                cell.Style.Font.Italic = true;
-                cell.Style.Font.FontSize = 14;
-                cell.Style.Font.FontColor = XLColor.FromHtml("#776b5d");
+                var column = worksheet.Column(col + 1);
+
+                var type = Nullable.GetUnderlyingType(props[col].PropertyType) ?? props[col].PropertyType;
+
+                column.Width = type == typeof(Guid)
+                    ? Math.Max(column.Width + 3, 40)
+                    : type == typeof(DateTime)
+                        ? Math.Max(column.Width + 3, 24)
+                        : column.Width + 3;
             }
 
             // Data rows
             int row = 2;
+
             foreach (var item in items)
             {
-                for (int col = 0; col < headers.Count; col++)
+                for (int col = 0; col < props.Length; col++)
                 {
-                    string header = headers[col];
-                    var prop = props.FirstOrDefault(p => p.Name.Equals(header, StringComparison.OrdinalIgnoreCase));
-                    if (prop == null)
+                    var value = props[col].GetValue(item);
+
+                    if (value == null)
                         continue;
 
-                    object? value = prop.GetValue(item);
                     worksheet.Cell(row, col + 1).SetValue(FormatValue(value)?.ToString() ?? string.Empty);
                 }
+
                 row++;
             }
         }
@@ -702,7 +725,7 @@ namespace NexusOS.Util
                 case DateTime dt:
                     return dt.ToString(AppConstants.DateTimeFormatDash);
                 case bool b:
-                    return b ? "Yes" : "No";
+                    return b ? "True" : "False";
                 case Enum e:
                     return e.ToString();
                 default:
