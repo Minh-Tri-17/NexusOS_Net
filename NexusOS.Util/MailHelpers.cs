@@ -8,14 +8,14 @@ namespace NexusOS.Util
 {
     public class MailHelpers
     {
-        private static IConfiguration? _config;
+        private readonly IConfiguration _config;
 
         public MailHelpers(IConfiguration config)
         {
             _config = config;
         }
 
-        public static async Task<bool> SendMail(MailModel mail)
+        public async Task<bool> SendMail(MailModel mail)
         {
             try
             {

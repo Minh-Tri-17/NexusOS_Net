@@ -15,6 +15,8 @@
         public const string PageSize = "PageSize";
         public const string FileNotFound = "FileNotFound";
         public const string Context = "Context";
+        public const string Redis = "Redis";
+        public const string Resources = "Resources";
 
         #endregion
 

@@ -14,6 +14,7 @@ using NexusOS.DAL.Models;
 using NexusOS.Util;
 using Serilog;
 using Serilog.Events;
+using StackExchange.Redis;
 using System.Globalization;
 using System.Text;
 
@@ -39,8 +40,11 @@ builder.Services.AddDbContext<NexusOsContext>(options =>
 
 #region Base
 
+// Cấu hình các dịch vụ hỗ trợ Cache (Redis)
+builder.Services.AddSingleton<CacheHelpers>();
+
 // Cấu hình dịch vụ gửi Email
-builder.Services.AddSingleton<MailHelpers>(new MailHelpers(builder.Configuration));
+builder.Services.AddSingleton<MailHelpers>();
 
 // Cung cấp khả năng truy cập thông tin HTTP Context
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
@@ -206,8 +210,22 @@ builder.Host.UseSerilog();
 
 builder.Services.AddJsonLocalization(options =>
 {
-    options.ResourcesPath = new[] { "Resources" };
+    options.ResourcesPath = new[] { AppConstants.Resources };
 });
+
+#endregion
+
+#region Redis
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString(AppConstants.Redis);
+    options.InstanceName = "NexusOS:";
+});
+
+//  Hỗ trợ các thao tác nâng cao như INCR để tăng Cache Version nguyên tử, giúp xử lý Cache Invalidation khi nhiều người cập nhật đồng thời
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString(AppConstants.Redis)!));
 
 #endregion
 
