@@ -5,6 +5,8 @@ namespace NexusOS.Util
     public class CacheHelpers
     {
         private readonly IConnectionMultiplexer _redis;
+        private int _cacheDisabled;
+        public bool IsCacheDisabled => Volatile.Read(ref _cacheDisabled) == 1;
 
         public CacheHelpers(IConnectionMultiplexer redis)
         {
@@ -19,10 +21,24 @@ namespace NexusOS.Util
             return version.HasValue ? version.ToString() : "0";
         }
 
-        public async Task InvalidatePagingCacheAsync(string key)
+        public async Task InvalidateCacheAsync(string key)
         {
-            var db = _redis.GetDatabase();
-            await db.StringIncrementAsync(key);
+            if (IsCacheDisabled)
+                return;
+
+            try
+            {
+                await _redis.GetDatabase().StringIncrementAsync(key);
+            }
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
+            {
+                DisableCache();
+            }
+        }
+
+        public void DisableCache()
+        {
+            Interlocked.Exchange(ref _cacheDisabled, 1);
         }
     }
 }

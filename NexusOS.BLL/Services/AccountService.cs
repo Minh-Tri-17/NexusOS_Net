@@ -24,7 +24,7 @@ namespace NexusOS.BLL.Services
         private readonly IConfiguration _config; // Dùng để đọc cấu hình ứng dụng
         private readonly IdentityOptions _options; // Dùng để lấy thiết lập Identity
         private readonly IStringLocalizer<SharedResource> _localizer; // Dùng để đa ngôn ngữ hóa thông báo
-        private readonly MailHelpers _mailHelpers; // Dùng để quản lý cache, ví dụ như lưu trữ mã OTP tạm thời
+        private readonly MailHelpers _mailHelpers; // Dùng để quản lý việc gửi email
         private static readonly ConcurrentDictionary<string, OtpEntry> otpStore
             = new ConcurrentDictionary<string, OtpEntry>(); // Dùng để lưu trữ mã OTP tạm thời
 
