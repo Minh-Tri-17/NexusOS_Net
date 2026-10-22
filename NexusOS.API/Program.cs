@@ -225,7 +225,14 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 //  Hỗ trợ các thao tác nâng cao như INCR để tăng Cache Version nguyên tử, giúp xử lý Cache Invalidation khi nhiều người cập nhật đồng thời
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString(AppConstants.Redis)!));
+{
+    var options = ConfigurationOptions.Parse(
+       builder.Configuration.GetConnectionString(AppConstants.Redis)!);
+
+    options.AbortOnConnectFail = false;
+
+    return ConnectionMultiplexer.Connect(options);
+});
 
 #endregion
 

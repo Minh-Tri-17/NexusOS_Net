@@ -16,11 +16,11 @@ namespace NexusOS.BLL.Services
         #region Infrastructure
 
         private const string VersionKey = "country:paging:version";
-        private readonly ICacheService _cache;
+        private readonly IRedisCacheService _cache;
         private readonly CacheHelpers _cacheHelper;
 
         public CatCountryService(NexusOsContext context, ICurrentUserService currentUser,
-            IStringLocalizer<SharedResource> localizer, ICacheService cache, CacheHelpers cacheHelper)
+            IStringLocalizer<SharedResource> localizer, IRedisCacheService cache, CacheHelpers cacheHelper)
             : base(context, currentUser, localizer)
         {
             _cache = cache;

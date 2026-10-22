@@ -154,8 +154,6 @@ namespace NexusOS.BLL.Services
 
         public virtual async Task<APIResults<PagingResults<TModel>>> GetPaging(FilterModel filter)
         {
-            _context.Database.SetCommandTimeout(120); // Tăng thời gian timeout lên 120 giây(mặc định là 30s)
-
             IQueryable<TEntity> query = _dbSet.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
                 .ApplySort()
                 .ApplySoftDelete(filter)
