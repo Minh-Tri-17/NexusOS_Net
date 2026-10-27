@@ -12,7 +12,7 @@ public partial class CatProvince
     [Key]
     public Guid Id { get; set; }
 
-    public Guid? CountryCatId { get; set; }
+    public Guid? CountryId { get; set; }
 
     [StringLength(50)]
     [Unicode(false)]

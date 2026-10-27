@@ -194,55 +194,29 @@ namespace NexusOS.Util
             if (codeProp != null)
             {
                 var codeValue = codeProp.GetValue(destination) as string;
-                if (isNew || string.IsNullOrEmpty(codeValue))
+
+                if (!string.IsNullOrEmpty(codeValue))
+                    codeProp.SetValue(destination, codeValue);
+
+                if (dbSet != null && string.IsNullOrEmpty(codeValue))
                 {
-                    if (dbSet != null)
+                    var nameProp = destinationProps.FirstOrDefault(p =>
+                        (p.Name == "Name" || p.Name == $"{tableName}Name") && p.PropertyType == typeof(string));
+                    var nameValue = nameProp?.GetValue(destination) as string;
+
+                    string prefix = GeneratePrefixFromName(nameValue, tableName);
+
+                    string nextCode;
+
+                    // Thường dùng cho import
+                    if (codeCache != null && inMemoryList != null)
                     {
-                        var nameProp = destinationProps.FirstOrDefault(p =>
-                            (p.Name == "Name" || p.Name == $"{tableName}Name") && p.PropertyType == typeof(string));
-                        var nameValue = nameProp?.GetValue(destination) as string;
-
-                        string prefix = GeneratePrefixFromName(nameValue, tableName);
-
-                        string nextCode;
-
-                        // Thường dùng cho import
-                        if (codeCache != null && inMemoryList != null)
+                        // Nếu không có cache thì lấy từ list get từ DB hoặc list get từ file excel
+                        if (!codeCache.TryGetValue(prefix, out int maxIndex))
                         {
-                            // Nếu không có cache thì lấy từ list get từ DB hoặc list get từ file excel
-                            if (!codeCache.TryGetValue(prefix, out int maxIndex))
-                            {
-                                maxIndex = 0;
+                            maxIndex = 0;
 
-                                foreach (var code in inMemoryList)
-                                {
-                                    if (string.IsNullOrEmpty(code) || !code.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                                        continue;
-
-                                    var numberPart = code.Substring(prefix.Length);
-
-                                    if (int.TryParse(numberPart, out int parsedNum) && parsedNum > maxIndex)
-                                        maxIndex = parsedNum;
-                                }
-                            }
-
-                            maxIndex++;
-
-                            codeCache[prefix] = maxIndex;
-
-                            nextCode = $"{prefix}{maxIndex:D6}";
-                        }
-                        // Thường dùng cho create hoặc update
-                        else
-                        {
-                            int maxIndex = 0;
-
-                            var existingCodes = dbSet.AsNoTracking()
-                                .Where(e => EF.Property<string>(e, codeProp.Name).StartsWith(prefix) && EF.Property<bool?>(e!, AppConstants.IsDelete) != true)
-                                .Select(e => EF.Property<string>(e, codeProp.Name))
-                                .ToList();
-
-                            foreach (var code in existingCodes)
+                            foreach (var code in inMemoryList)
                             {
                                 if (string.IsNullOrEmpty(code) || !code.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                                     continue;
@@ -252,21 +226,40 @@ namespace NexusOS.Util
                                 if (int.TryParse(numberPart, out int parsedNum) && parsedNum > maxIndex)
                                     maxIndex = parsedNum;
                             }
-
-                            nextCode = $"{prefix}{maxIndex + 1:D6}";
                         }
 
-                        codeProp.SetValue(destination, nextCode);
-                        inMemoryList?.Add(nextCode);
+                        maxIndex++;
+
+                        codeCache[prefix] = maxIndex;
+
+                        nextCode = $"{prefix}{maxIndex:D6}";
                     }
+                    // Thường dùng cho create hoặc update
                     else
                     {
-                        codeProp.SetValue(destination, codeValue);
+                        int maxIndex = 0;
+
+                        var existingCodes = dbSet.AsNoTracking()
+                            .Where(e => EF.Property<string>(e, codeProp.Name).StartsWith(prefix) && EF.Property<bool?>(e!, AppConstants.IsDelete) != true)
+                            .Select(e => EF.Property<string>(e, codeProp.Name))
+                            .ToList();
+
+                        foreach (var code in existingCodes)
+                        {
+                            if (string.IsNullOrEmpty(code) || !code.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                                continue;
+
+                            var numberPart = code.Substring(prefix.Length);
+
+                            if (int.TryParse(numberPart, out int parsedNum) && parsedNum > maxIndex)
+                                maxIndex = parsedNum;
+                        }
+
+                        nextCode = $"{prefix}{maxIndex + 1:D6}";
                     }
-                }
-                else
-                {
-                    codeProp.SetValue(destination, codeValue);
+
+                    codeProp.SetValue(destination, nextCode);
+                    inMemoryList?.Add(nextCode);
                 }
             }
 

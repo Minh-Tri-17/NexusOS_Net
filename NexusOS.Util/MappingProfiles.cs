@@ -27,7 +27,31 @@ namespace NexusOS.Util
                 .ForMember(dest => dest.IsDelete, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true));
 
             // Khi cập nhật (map từ model → entity nhưng bỏ 3 field)
+            CreateMap<Employee, EmployeeModel>().ReverseMap()
+                .ForMember(dest => dest.CreatedBy, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.IsDelete, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true));
+
+            // Khi cập nhật (map từ model → entity nhưng bỏ 3 field)
             CreateMap<User, UserModel>().ReverseMap()
+                .ForMember(dest => dest.CreatedBy, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.IsDelete, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true));
+
+            // Khi cập nhật (map từ model → entity nhưng bỏ 3 field)
+            CreateMap<UserRole, UserRoleModel>().ReverseMap()
+                .ForMember(dest => dest.CreatedBy, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.IsDelete, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true));
+
+            // Khi cập nhật (map từ model → entity nhưng bỏ 3 field)
+            CreateMap<Role, RoleModel>().ReverseMap()
+                .ForMember(dest => dest.CreatedBy, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
+                .ForMember(dest => dest.IsDelete, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true));
+
+            // Khi cập nhật (map từ model → entity nhưng bỏ 3 field)
+            CreateMap<RolePermission, RolePermissionModel>().ReverseMap()
                 .ForMember(dest => dest.CreatedBy, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
                 .ForMember(dest => dest.CreatedAt, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true))
                 .ForMember(dest => dest.IsDelete, opt => opt.Condition((src, dest, srcMember, destMember, context) => !context.Items.TryGetValue("IgnoreAuditFields", out var ignore) || ignore is not true));

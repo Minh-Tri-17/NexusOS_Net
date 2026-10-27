@@ -145,8 +145,10 @@ builder.Services.AddSwaggerGen(options =>
     options.SchemaFilter<HideNavigationPropertiesSchemaFilter>();
 });
 
-string issuer = builder.Configuration.GetValue<string>("Tokens:Issuer");
-string signingKey = builder.Configuration.GetValue<string>("Tokens:Key");
+string issuer = builder.Configuration.GetValue<string>("Tokens:Issuer")
+    ?? throw new InvalidOperationException("Tokens:Issuer is missing.");
+string signingKey = builder.Configuration.GetValue<string>("Tokens:Key")
+    ?? throw new InvalidOperationException("Tokens:Key is missing.");
 byte[] signingKeyBytes = System.Text.Encoding.UTF8.GetBytes(signingKey);
 
 // Cấu hình hệ thống xác thực (Authentication)

@@ -12,7 +12,7 @@ public partial class CatWard
     [Key]
     public Guid Id { get; set; }
 
-    public Guid? ProvinceCatId { get; set; }
+    public Guid? ProvinceId { get; set; }
 
     [StringLength(50)]
     [Unicode(false)]

@@ -60,12 +60,19 @@ namespace NexusOS.MB
 
     public partial class CatProvinceModel : CatProvince
     {
-
+        public string? CountryName { get; set; }
     }
 
     public partial class CatWardModel : CatWard
     {
+        public string? ProvinceName { get; set; }
+    }
 
+    public partial class EmployeeModel : Employee
+    {
+        public string? CountryName { get; set; }
+        public string? ProvinceName { get; set; }
+        public string? WardName { get; set; }
     }
 
     public partial class UserModel : User
@@ -73,6 +80,21 @@ namespace NexusOS.MB
         public bool Remember { get; set; } = false;
         public string? Password { get; set; }
         public string? RoleIds { get; set; }
+    }
+
+    public partial class RoleModel : Role
+    {
+
+    }
+
+    public partial class UserRoleModel : UserRole
+    {
+
+    }
+
+    public partial class RolePermissionModel : RolePermission
+    {
+
     }
 
     #endregion
