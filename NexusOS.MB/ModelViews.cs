@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using NexusOS.DAL.Models;
 using System.ComponentModel.DataAnnotations;
 
@@ -79,7 +79,7 @@ namespace NexusOS.MB
     {
         public bool Remember { get; set; } = false;
         public string? Password { get; set; }
-        public string? RoleIds { get; set; }
+        public List<string>? RoleIds { get; set; }
         public string? EmployeeName { get; set; }
     }
 

@@ -1,4 +1,3 @@
-﻿
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NexusOS.BLL.Interfaces;
@@ -22,51 +21,72 @@ namespace NexusOS.BLL.Services
 
         #region Default Operations
 
-        public override async Task<APIResults<PagingResults<UserModel>>> GetPaging(FilterModel filter)
+        public override async Task<APIResults<UserModel>> GetOne(Guid id)
         {
-            IQueryable<User> query = _dbSet.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
-                .ApplySort()
-                .ApplySoftDelete(filter)
-                .ApplyCommonFilters(filter);
-
-            var totalCount = 0;
-            if (!DataHelpers.GetBool(filter.IsExport))
-                totalCount = await query.CountAsync();
-
-            query = query.ApplyPaging(filter);
-
-            var entities = await query.ToListAsync();
-            var models = DataHelpers.MappingList<User, UserModel>(entities);
-
-            #region Enrich Related Data
-
-            var employeeIds = models.Select(s => s.EmployeeId)
-               .Where(s => s.HasValue).Distinct().ToList();
-
-            var employees = await _context.Employees.AsNoTracking()
-                .Where(s => s.IsDelete != true && employeeIds.Contains(s.Id))
-                .Select(s => new { s.Id, s.EmployeeName })
-                .ToDictionaryAsync(s => s.Id, s => s);
-
-            foreach (var model in models)
+            var result = await base.GetOne(id);
+            if (result.IsSuccess && result.Result != null)
             {
-                if (employees.TryGetValue(DataHelpers.GetGuid(model.EmployeeId), out var employee))
-                    model.EmployeeName = employee.EmployeeName;
+                var roleIds = await _context.UserRoles.AsNoTracking()
+                    .Where(s => s.IsDelete != true && s.UserId == id && s.RoleId.HasValue)
+                    .Select(s => s.RoleId!.Value.ToString())
+                    .ToListAsync();
+
+                result.Result.RoleIds = roleIds;
             }
 
-            #endregion
+            return result;
+        }
 
-            var pageResult = new PagingResults<UserModel>(models, totalCount, filter.PageIndex, filter.PageSize);
+        public override async Task<APIResults<PagingResults<UserModel>>> GetPaging(FilterModel filter)
+        {
+            var result = await base.GetPaging(filter);
+            if (result.IsSuccess && result.Result != null)
+            {
+                #region Enrich Related Data
 
-            return APIResults<PagingResults<UserModel>>.Success(pageResult, _localizer[Messages.GetListResultSuccess]);
+                var employeeIds = result.Result.Items.Select(s => s.EmployeeId)
+                   .Where(s => s.HasValue).Distinct().ToList();
+
+                var employees = await _context.Employees.AsNoTracking()
+                    .Where(s => s.IsDelete != true && employeeIds.Contains(s.Id))
+                    .Select(s => new { s.Id, s.EmployeeName })
+                    .ToDictionaryAsync(s => s.Id, s => s);
+
+                var userIds = result.Result.Items.Select(s => s.Id).ToList();
+
+                var userRoles = await _context.UserRoles.AsNoTracking()
+                    .Where(s => s.IsDelete != true && s.UserId.HasValue && userIds.Contains(s.UserId.Value) && s.RoleId.HasValue)
+                    .ToListAsync();
+
+                foreach (var model in result.Result.Items)
+                {
+                    if (employees.TryGetValue(DataHelpers.GetGuid(model.EmployeeId), out var employee))
+                        model.EmployeeName = employee.EmployeeName;
+
+                    model.RoleIds = userRoles
+                        .Where(s => s.UserId == model.Id && s.RoleId.HasValue)
+                        .Select(s => s.RoleId!.Value.ToString())
+                        .ToList();
+                }
+
+                #endregion
+            }
+
+            return result;
         }
 
         protected override Task BeforeSaveAsync(UserModel request, User entity, bool isNew)
         {
             if (!string.IsNullOrWhiteSpace(request.Password))
-                request.PasswordHash = PasswordHasher.HashPassword(request.Password);
+            {
+                var hash = PasswordHasher.HashPassword(request.Password);
+                request.PasswordHash = hash;
+                entity.PasswordHash = hash;
+            }
             else if (!isNew)
+            {
                 request.PasswordHash = entity.PasswordHash;
+            }
 
             return Task.CompletedTask; // Hoàn thành phương thức trả về Task khi không cần dùng await.
         }
@@ -78,11 +98,19 @@ namespace NexusOS.BLL.Services
 
             if (request.RoleIds != null && request.RoleIds.Any())
             {
-                var userRoles = request.RoleIds.Select(roleId => new UserRole
-                {
-                    UserId = entity.Id,
-                    RoleId = DataHelpers.GetGuid(roleId)
-                });
+                var userRoles = request.RoleIds
+                    .Select(roleId => DataHelpers.GetGuid(roleId))
+                    .Where(s => s != Guid.Empty)
+                    .Distinct()
+                    .Select(s => new UserRole
+                    {
+                        Id = Guid.CreateVersion7(),
+                        UserId = entity.Id,
+                        RoleId = s,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = _currentUser.UserId
+                    });
 
                 await _context.UserRoles.AddRangeAsync(userRoles);
             }

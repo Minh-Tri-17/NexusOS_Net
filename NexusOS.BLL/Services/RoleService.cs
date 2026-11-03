@@ -1,4 +1,3 @@
-﻿
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NexusOS.BLL.Interfaces;
@@ -24,38 +23,26 @@ namespace NexusOS.BLL.Services
 
         public override async Task<APIResults<PagingResults<RoleModel>>> GetPaging(FilterModel filter)
         {
-            IQueryable<Role> query = _dbSet.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
-                .ApplySort()
-                .ApplySoftDelete(filter)
-                .ApplyCommonFilters(filter);
-
-            var totalCount = 0;
-            if (!DataHelpers.GetBool(filter.IsExport))
-                totalCount = await query.CountAsync();
-
-            query = query.ApplyPaging(filter);
-
-            var entities = await query.ToListAsync();
-            var models = DataHelpers.MappingList<Role, RoleModel>(entities);
-
-            #region Enrich Related Data
-
-            var ids = models.Select(s => s.Id).ToList();
-
-            var rolePermissions = await _context.RolePermissions.AsNoTracking()
-                .Where(s => s.IsDelete != true && s.RoleId.HasValue && ids.Contains(s.RoleId.Value))
-                .ToListAsync();
-
-            foreach (var model in models)
+            var result = await base.GetPaging(filter);
+            if (result.IsSuccess && result.Result != null)
             {
-                model.Permissions = rolePermissions.Where(s => s.RoleId == model.Id).ToList();
+                #region Enrich Related Data
+
+                var ids = result.Result.Items.Select(s => s.Id).ToList();
+
+                var rolePermissions = await _context.RolePermissions.AsNoTracking()
+                    .Where(s => s.IsDelete != true && s.RoleId.HasValue && ids.Contains(s.RoleId.Value))
+                    .ToListAsync();
+
+                foreach (var model in result.Result.Items)
+                {
+                    model.Permissions = rolePermissions.Where(s => s.RoleId == model.Id).ToList();
+                }
+
+                #endregion
             }
 
-            #endregion
-
-            var pageResult = new PagingResults<RoleModel>(models, totalCount, filter.PageIndex, filter.PageSize);
-
-            return APIResults<PagingResults<RoleModel>>.Success(pageResult, _localizer[Messages.GetListResultSuccess]);
+            return result;
         }
 
         protected override async Task AfterSaveAsync(RoleModel request, Role entity)
