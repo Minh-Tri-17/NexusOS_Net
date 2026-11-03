@@ -80,11 +80,12 @@ namespace NexusOS.MB
         public bool Remember { get; set; } = false;
         public string? Password { get; set; }
         public string? RoleIds { get; set; }
+        public string? EmployeeName { get; set; }
     }
 
     public partial class RoleModel : Role
     {
-
+        public List<RolePermission>? Permissions { get; set; }
     }
 
     public partial class UserRoleModel : UserRole

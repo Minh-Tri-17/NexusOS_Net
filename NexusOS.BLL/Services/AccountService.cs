@@ -60,13 +60,10 @@ namespace NexusOS.BLL.Services
             if (checkPassword == false)
                 return APIResults<string>.Failure(_localizer[Messages.InvalidUsernameOrPassword]); // Luôn trả ra message chung chung để tránh hacker biết được thông tin chính xác
 
-            //var employee = await _context.Employees.FirstOrDefaultAsync(s => s.Id == DataHelpers.GetGuid(user.EmployeeId));
+            var employee = await _context.Employees.FirstOrDefaultAsync(s => s.Id == DataHelpers.GetGuid(user.EmployeeId));
 
-            //var id = employee != null ? employee.Id : Guid.Empty;
-            //var employeeName = employee != null ? employee.EmployeeName : string.Empty;
-
-            var id = Guid.Empty;
-            var employeeName = string.Empty;
+            var id = employee != null ? employee.Id : Guid.Empty;
+            var employeeName = employee != null ? employee.EmployeeName : string.Empty;
 
             var claims = new List<Claim>
             {
@@ -77,17 +74,15 @@ namespace NexusOS.BLL.Services
                 new Claim("OwnerID", DataHelpers.GetString(id.ToString())),
             };
 
-            #region Add roleNames to claim Role
+            #region Add roleIds to claim Role
 
-            //var listUserRole = await _context.UserRoles
-            //    .Where(s => s.UserId == user.Id)
-            //    .Join(_context.Roles,
-            //        ur => ur.RoleId,
-            //        r => r.Id,
-            //        (ur, r) => r.RoleName)
-            //    .ToListAsync();
+            var roleIds = await _context.UserRoles
+                .AsNoTracking()
+                .Where(s => s.UserId == user.Id)
+                .Select(s => s.RoleId)
+                .ToListAsync();
 
-            //claims.AddRange(listUserRole.Select(roleName => new Claim(ClaimTypes.Role, DataHelpers.GetString(roleName))));
+            claims.AddRange(roleIds.Select(roleId => new Claim(ClaimTypes.Role, DataHelpers.GetString(roleId))));
 
             #endregion
 
