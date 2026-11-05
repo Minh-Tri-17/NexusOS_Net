@@ -51,7 +51,7 @@ namespace NexusOS.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet($"{nameof(GetOne)}/{{id}}")]
+        [HttpGet($"{nameof(GetOne)}")]
         public virtual async Task<ActionResult> GetOne(Guid id)
         {
             var result = await _service.GetOne(id);

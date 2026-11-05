@@ -35,4 +35,14 @@ public partial class CatProvince
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [InverseProperty("Province")]
+    public virtual ICollection<CatWard> CatWards { get; set; } = new List<CatWard>();
+
+    [ForeignKey("CountryId")]
+    [InverseProperty("CatProvinces")]
+    public virtual CatCountry? Country { get; set; }
+
+    [InverseProperty("Province")]
+    public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
 }

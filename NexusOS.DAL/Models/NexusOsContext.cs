@@ -15,11 +15,19 @@ public partial class NexusOsContext : DbContext
     {
     }
 
+    public virtual DbSet<CatContractType> CatContractTypes { get; set; }
+
     public virtual DbSet<CatCountry> CatCountries { get; set; }
+
+    public virtual DbSet<CatDepartment> CatDepartments { get; set; }
+
+    public virtual DbSet<CatLeaveType> CatLeaveTypes { get; set; }
 
     public virtual DbSet<CatProvince> CatProvinces { get; set; }
 
     public virtual DbSet<CatWard> CatWards { get; set; }
+
+    public virtual DbSet<Contract> Contracts { get; set; }
 
     public virtual DbSet<Employee> Employees { get; set; }
 
@@ -39,7 +47,24 @@ public partial class NexusOsContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<CatContractType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_Cat_ ContractTypes");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+        });
+
         modelBuilder.Entity<CatCountry>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
+        });
+
+        modelBuilder.Entity<CatDepartment>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
+        });
+
+        modelBuilder.Entity<CatLeaveType>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
         });
@@ -47,16 +72,33 @@ public partial class NexusOsContext : DbContext
         modelBuilder.Entity<CatProvince>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Country).WithMany(p => p.CatProvinces).HasConstraintName("FK_Cat_Provinces_Cat_Countries");
         });
 
         modelBuilder.Entity<CatWard>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Province).WithMany(p => p.CatWards).HasConstraintName("FK_Cat_Wards_Cat_Provinces");
+        });
+
+        modelBuilder.Entity<Contract>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.ContractType).WithMany(p => p.Contracts).HasConstraintName("FK_Contracts_Cat_ContractTypes");
         });
 
         modelBuilder.Entity<Employee>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Country).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_Countries");
+
+            entity.HasOne(d => d.Province).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_Provinces");
+
+            entity.HasOne(d => d.Ward).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_Wards");
         });
 
         modelBuilder.Entity<Role>(entity =>

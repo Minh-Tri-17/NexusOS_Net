@@ -172,20 +172,14 @@ namespace NexusOS.Util
             var propCAt = typeof(T).GetProperty(AppConstants.CreatedAt);
 
             if (propUAt != null && propCAt != null)
-            {
                 return query.OrderByDescending(s =>
-                    EF.Property<DateTime?>(s!, AppConstants.UpdatedAt) ?? EF.Property<DateTime>(s!, AppConstants.CreatedAt));
-            }
+                     EF.Property<DateTime?>(s!, AppConstants.UpdatedAt) ?? EF.Property<DateTime>(s!, AppConstants.CreatedAt));
 
             if (propUAt != null)
-            {
                 return query.OrderByDescending(s => EF.Property<DateTime?>(s!, AppConstants.UpdatedAt));
-            }
 
             if (propCAt != null)
-            {
                 return query.OrderByDescending(s => EF.Property<DateTime?>(s!, AppConstants.CreatedAt));
-            }
 
             return query;
         }

@@ -68,11 +68,35 @@ namespace NexusOS.MB
         public string? ProvinceName { get; set; }
     }
 
+    public partial class CatDepartmentModel : CatDepartment
+    {
+        public string? ManagerName { get; set; }
+    }
+
+    public partial class CatLeaveTypeModel : CatLeaveType
+    {
+
+    }
+
+    public partial class CatContractTypeModel : CatContractType
+    {
+
+    }
+
     public partial class EmployeeModel : Employee
     {
         public string? CountryName { get; set; }
         public string? ProvinceName { get; set; }
         public string? WardName { get; set; }
+        public string? DepartmentName { get; set; }
+        public string? ContractName { get; set; }
+        public string? ContractTypeName { get; set; }
+        public string? ManagerName { get; set; }
+    }
+
+    public partial class ContractModel : Contract
+    {
+        public string? ContractTypeName { get; set; }
     }
 
     public partial class UserModel : User

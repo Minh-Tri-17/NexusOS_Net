@@ -111,4 +111,16 @@ public partial class Employee
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [ForeignKey("CountryId")]
+    [InverseProperty("Employees")]
+    public virtual CatCountry? Country { get; set; }
+
+    [ForeignKey("ProvinceId")]
+    [InverseProperty("Employees")]
+    public virtual CatProvince? Province { get; set; }
+
+    [ForeignKey("WardId")]
+    [InverseProperty("Employees")]
+    public virtual CatWard? Ward { get; set; }
 }
