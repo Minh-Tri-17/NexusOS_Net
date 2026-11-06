@@ -36,10 +36,21 @@ namespace NexusOS.BLL.Services
                     .Select(s => new { s.Id, s.ContractTypeName })
                     .ToDictionaryAsync(s => s.Id, s => s);
 
+                var employeeIds = result.Result.Items.Select(s => s.EmployeeId)
+                   .Where(s => s.HasValue).Distinct().ToList();
+
+                var employees = await _context.Employees.AsNoTracking()
+                    .Where(s => s.IsDelete != true && employeeIds.Contains(s.Id))
+                    .Select(s => new { s.Id, s.EmployeeName })
+                    .ToDictionaryAsync(s => s.Id, s => s);
+
                 foreach (var model in result.Result.Items)
                 {
                     if (contracts.TryGetValue(DataHelpers.GetGuid(model.ContractTypeId), out var contractType))
                         model.ContractTypeName = contractType.ContractTypeName;
+
+                    if (employees.TryGetValue(DataHelpers.GetGuid(model.EmployeeId), out var employee))
+                        model.EmployeeName = employee.EmployeeName;
                 }
 
                 #endregion

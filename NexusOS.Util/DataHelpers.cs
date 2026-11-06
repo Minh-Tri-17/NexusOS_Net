@@ -264,7 +264,7 @@ namespace NexusOS.Util
             }
 
             // Sinh tự động thông tin khi tạo mới hoặc cập nhật
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var currentUserId = GetGuid(currentUser);
 
             if (isNew)

@@ -97,6 +97,7 @@ namespace NexusOS.MB
     public partial class ContractModel : Contract
     {
         public string? ContractTypeName { get; set; }
+        public string? EmployeeName { get; set; }
     }
 
     public partial class UserModel : User
