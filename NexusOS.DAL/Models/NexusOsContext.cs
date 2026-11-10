@@ -21,6 +21,8 @@ public partial class NexusOsContext : DbContext
 
     public virtual DbSet<CatDepartment> CatDepartments { get; set; }
 
+    public virtual DbSet<CatJobTitle> CatJobTitles { get; set; }
+
     public virtual DbSet<CatLeaveType> CatLeaveTypes { get; set; }
 
     public virtual DbSet<CatProvince> CatProvinces { get; set; }
@@ -30,6 +32,8 @@ public partial class NexusOsContext : DbContext
     public virtual DbSet<Contract> Contracts { get; set; }
 
     public virtual DbSet<Employee> Employees { get; set; }
+
+    public virtual DbSet<LeaveRequest> LeaveRequests { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -62,6 +66,13 @@ public partial class NexusOsContext : DbContext
         modelBuilder.Entity<CatDepartment>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Manager).WithMany(p => p.CatDepartments).HasConstraintName("FK_Cat_Department_Employees");
+        });
+
+        modelBuilder.Entity<CatJobTitle>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
         });
 
         modelBuilder.Entity<CatLeaveType>(entity =>
@@ -88,6 +99,8 @@ public partial class NexusOsContext : DbContext
             entity.Property(e => e.Id).ValueGeneratedNever();
 
             entity.HasOne(d => d.ContractType).WithMany(p => p.Contracts).HasConstraintName("FK_Contracts_Cat_ContractTypes");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.Contracts).HasConstraintName("FK_Contracts_Employees");
         });
 
         modelBuilder.Entity<Employee>(entity =>
@@ -96,9 +109,18 @@ public partial class NexusOsContext : DbContext
 
             entity.HasOne(d => d.Country).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_Countries");
 
+            entity.HasOne(d => d.Department).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_Department");
+
+            entity.HasOne(d => d.JobTitle).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_JobTitle");
+
             entity.HasOne(d => d.Province).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_Provinces");
 
             entity.HasOne(d => d.Ward).WithMany(p => p.Employees).HasConstraintName("FK_Employees_Cat_Wards");
+        });
+
+        modelBuilder.Entity<LeaveRequest>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
         });
 
         modelBuilder.Entity<Role>(entity =>

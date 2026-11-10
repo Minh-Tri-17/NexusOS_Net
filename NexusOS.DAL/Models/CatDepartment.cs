@@ -36,4 +36,11 @@ public partial class CatDepartment
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [InverseProperty("Department")]
+    public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
+
+    [ForeignKey("ManagerId")]
+    [InverseProperty("CatDepartments")]
+    public virtual Employee? Manager { get; set; }
 }

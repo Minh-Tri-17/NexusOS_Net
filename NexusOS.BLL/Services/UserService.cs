@@ -42,8 +42,6 @@ namespace NexusOS.BLL.Services
             var result = await base.GetPaging(filter);
             if (result.IsSuccess && result.Result != null)
             {
-                #region Enrich Related Data
-
                 var employeeIds = result.Result.Items.Select(s => s.EmployeeId)
                    .Where(s => s.HasValue).Distinct().ToList();
 
@@ -68,8 +66,6 @@ namespace NexusOS.BLL.Services
                         .Select(s => s.RoleId!.Value.ToString())
                         .ToList();
                 }
-
-                #endregion
             }
 
             return result;

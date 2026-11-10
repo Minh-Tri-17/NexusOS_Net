@@ -6,7 +6,9 @@
     public partial class CatDepartment : IBaseEntity { }
     public partial class CatContractType : IBaseEntity { }
     public partial class CatLeaveType : IBaseEntity { }
+    public partial class CatJobTitle : IBaseEntity { }
     public partial class Employee : IBaseEntity { }
+    public partial class LeaveRequest : IBaseEntity { }
     public partial class Contract : IBaseEntity { }
     public partial class User : IBaseEntity { }
     public partial class Role : IBaseEntity { }

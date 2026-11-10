@@ -26,8 +26,6 @@ namespace NexusOS.BLL.Services
             var result = await base.GetPaging(filter);
             if (result.IsSuccess && result.Result != null)
             {
-                #region Enrich Related Data
-
                 var countryIds = result.Result.Items.Select(s => s.CountryId)
                     .Where(s => s.HasValue).Distinct().ToList();
 
@@ -52,6 +50,14 @@ namespace NexusOS.BLL.Services
                     .Select(s => new { s.Id, s.WardName })
                     .ToDictionaryAsync(s => s.Id, s => s);
 
+                var jobTitleIds = result.Result.Items.Select(s => s.JobTitleId)
+                    .Where(s => s.HasValue).Distinct().ToList();
+
+                var jobTitles = await _context.CatJobTitles.AsNoTracking()
+                    .Where(s => s.IsDelete != true && jobTitleIds.Contains(s.Id))
+                    .Select(s => new { s.Id, s.JobTitleName })
+                    .ToDictionaryAsync(s => s.Id, s => s);
+
                 var departmentIds = result.Result.Items.Select(s => s.DepartmentId)
                     .Where(s => s.HasValue).Distinct().ToList();
 
@@ -67,10 +73,19 @@ namespace NexusOS.BLL.Services
 
                 var employeeIds = result.Result.Items.Select(s => s.Id).ToList();
 
-                var contracts = await _context.Contracts.AsNoTracking()
+                var contracts = (await _context.Contracts.AsNoTracking()
                     .Where(s => s.IsDelete != true && s.ContractTypeId.HasValue && s.EmployeeId.HasValue && employeeIds.Contains(s.EmployeeId.Value))
-                    .Select(s => new { s.Id, s.EmployeeId, s.ContractName, s.ContractType!.ContractTypeName })
-                    .ToDictionaryAsync(s => s.EmployeeId!.Value, s => s);
+                    .OrderByDescending(s => s.StartDate ?? s.CreatedAt)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.EmployeeId,
+                        s.ContractName,
+                        s.ContractType!.ContractTypeName
+                    })
+                    .ToListAsync())
+                    .DistinctBy(s => s.EmployeeId!.Value)
+                    .ToDictionary(s => s.EmployeeId!.Value, s => s);
 
                 foreach (var model in result.Result.Items)
                 {
@@ -82,6 +97,9 @@ namespace NexusOS.BLL.Services
 
                     if (wards.TryGetValue(DataHelpers.GetGuid(model.WardId), out var ward))
                         model.WardName = ward.WardName;
+
+                    if (jobTitles.TryGetValue(DataHelpers.GetGuid(model.JobTitleId), out var jobTitle))
+                        model.JobTitleName = jobTitle.JobTitleName;
 
                     if (departments.TryGetValue(DataHelpers.GetGuid(model.DepartmentId), out var department))
                     {
@@ -97,8 +115,6 @@ namespace NexusOS.BLL.Services
                         model.ContractTypeName = contract.ContractTypeName;
                     }
                 }
-
-                #endregion
             }
 
             return result;

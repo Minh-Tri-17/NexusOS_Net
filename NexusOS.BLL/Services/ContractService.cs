@@ -26,8 +26,6 @@ namespace NexusOS.BLL.Services
             var result = await base.GetPaging(filter);
             if (result.IsSuccess && result.Result != null)
             {
-                #region Enrich Related Data
-
                 var contractTypeIds = result.Result.Items.Select(s => s.ContractTypeId)
                    .Where(s => s.HasValue).Distinct().ToList();
 
@@ -52,8 +50,6 @@ namespace NexusOS.BLL.Services
                     if (employees.TryGetValue(DataHelpers.GetGuid(model.EmployeeId), out var employee))
                         model.EmployeeName = employee.EmployeeName;
                 }
-
-                #endregion
             }
 
             return result;

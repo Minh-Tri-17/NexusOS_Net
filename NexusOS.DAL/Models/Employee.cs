@@ -112,9 +112,23 @@ public partial class Employee
 
     public Guid? UpdatedBy { get; set; }
 
+    [InverseProperty("Manager")]
+    public virtual ICollection<CatDepartment> CatDepartments { get; set; } = new List<CatDepartment>();
+
+    [InverseProperty("Employee")]
+    public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
+
     [ForeignKey("CountryId")]
     [InverseProperty("Employees")]
     public virtual CatCountry? Country { get; set; }
+
+    [ForeignKey("DepartmentId")]
+    [InverseProperty("Employees")]
+    public virtual CatDepartment? Department { get; set; }
+
+    [ForeignKey("JobTitleId")]
+    [InverseProperty("Employees")]
+    public virtual CatJobTitle? JobTitle { get; set; }
 
     [ForeignKey("ProvinceId")]
     [InverseProperty("Employees")]

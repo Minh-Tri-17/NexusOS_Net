@@ -79,4 +79,8 @@ public partial class Contract
     [ForeignKey("ContractTypeId")]
     [InverseProperty("Contracts")]
     public virtual CatContractType? ContractType { get; set; }
+
+    [ForeignKey("EmployeeId")]
+    [InverseProperty("Contracts")]
+    public virtual Employee? Employee { get; set; }
 }

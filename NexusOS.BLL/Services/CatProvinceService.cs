@@ -26,8 +26,6 @@ namespace NexusOS.BLL.Services
             var result = await base.GetPaging(filter);
             if (result.IsSuccess && result.Result != null)
             {
-                #region Enrich Related Data
-
                 var countryIds = result.Result.Items.Select(s => s.CountryId)
                     .Where(s => s.HasValue).Distinct().ToList();
 
@@ -41,8 +39,6 @@ namespace NexusOS.BLL.Services
                     if (countries.TryGetValue(DataHelpers.GetGuid(model.CountryId), out var country))
                         model.CountryName = country.CountryName;
                 }
-
-                #endregion
             }
 
             return result;

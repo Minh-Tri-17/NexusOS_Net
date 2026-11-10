@@ -26,8 +26,6 @@ namespace NexusOS.BLL.Services
             var result = await base.GetPaging(filter);
             if (result.IsSuccess && result.Result != null)
             {
-                #region Enrich Related Data
-
                 var ids = result.Result.Items.Select(s => s.Id).ToList();
 
                 var rolePermissions = await _context.RolePermissions.AsNoTracking()
@@ -38,8 +36,6 @@ namespace NexusOS.BLL.Services
                 {
                     model.Permissions = rolePermissions.Where(s => s.RoleId == model.Id).ToList();
                 }
-
-                #endregion
             }
 
             return result;
