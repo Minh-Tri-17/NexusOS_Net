@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
 namespace NexusOS.DAL.Models;
@@ -45,8 +43,13 @@ public partial class NexusOsContext : DbContext
 
     public virtual DbSet<VwRandomBinary> VwRandomBinaries { get; set; }
 
-    // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    //     => optionsBuilder.UseSqlServer("Server=nexus-db,1433;Database=NexusOS;User Id=tristan;Password=Nt!@#178201;TrustServerCertificate=True");
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlServer("Data Source=ASUS;Initial Catalog=NexusOS;Integrated Security=True;Trust Server Certificate=True");
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
