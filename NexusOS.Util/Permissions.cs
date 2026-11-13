@@ -35,6 +35,61 @@
 
         #endregion
 
+        #region CatContractType
+
+        public const string CatContractTypeView = "CatContractType.View";
+        public const string CatContractTypeCreate = "CatContractType.Create";
+        public const string CatContractTypeUpdate = "CatContractType.Update";
+        public const string CatContractTypeDelete = "CatContractType.Delete";
+        public const string CatContractTypeImport = "CatContractType.Import";
+        public const string CatContractTypeExport = "CatContractType.Export";
+
+        #endregion
+
+        #region CatLeaveType
+
+        public const string CatLeaveTypeView = "CatLeaveType.View";
+        public const string CatLeaveTypeCreate = "CatLeaveType.Create";
+        public const string CatLeaveTypeUpdate = "CatLeaveType.Update";
+        public const string CatLeaveTypeDelete = "CatLeaveType.Delete";
+        public const string CatLeaveTypeImport = "CatLeaveType.Import";
+        public const string CatLeaveTypeExport = "CatLeaveType.Export";
+
+        #endregion
+
+        #region CatJobTitle
+
+        public const string CatJobTitleView = "CatJobTitle.View";
+        public const string CatJobTitleCreate = "CatJobTitle.Create";
+        public const string CatJobTitleUpdate = "CatJobTitle.Update";
+        public const string CatJobTitleDelete = "CatJobTitle.Delete";
+        public const string CatJobTitleImport = "CatJobTitle.Import";
+        public const string CatJobTitleExport = "CatJobTitle.Export";
+
+        #endregion
+
+        #region CatDepartment
+
+        public const string CatDepartmentView = "CatDepartment.View";
+        public const string CatDepartmentCreate = "CatDepartment.Create";
+        public const string CatDepartmentUpdate = "CatDepartment.Update";
+        public const string CatDepartmentDelete = "CatDepartment.Delete";
+        public const string CatDepartmentImport = "CatDepartment.Import";
+        public const string CatDepartmentExport = "CatDepartment.Export";
+
+        #endregion
+
+        #region Contract
+
+        public const string ContractView = "Contract.View";
+        public const string ContractCreate = "Contract.Create";
+        public const string ContractUpdate = "Contract.Update";
+        public const string ContractDelete = "Contract.Delete";
+        public const string ContractImport = "Contract.Import";
+        public const string ContractExport = "Contract.Export";
+
+        #endregion
+
         #region Employee
 
         public const string EmployeeView = "Employee.View";
