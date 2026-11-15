@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NexusOS.BLL.Interfaces;
 using NexusOS.DAL.Models;
@@ -21,27 +20,22 @@ namespace NexusOS.BLL.Services
 
         #region Default Operations
 
-        public override async Task<APIResults<PagingResults<CatDepartmentModel>>> GetPaging(FilterModel filter)
+        protected override IQueryable<CatDepartmentModel> ProjectToModel(IQueryable<CatDepartment> query)
         {
-            var result = await base.GetPaging(filter);
-            if (result.IsSuccess && result.Result != null)
+            return query.Select(s => new CatDepartmentModel
             {
-                var managerIds = result.Result.Items.Select(s => s.ManagerId)
-                   .Where(s => s.HasValue).Distinct().ToList();
+                Id = s.Id,
+                DepartmentCode = s.DepartmentCode,
+                DepartmentName = s.DepartmentName,
+                Note = s.Note,
+                CreatedAt = s.CreatedAt,
+                CreatedBy = s.CreatedBy,
+                UpdatedAt = s.UpdatedAt,
+                UpdatedBy = s.UpdatedBy,
 
-                var managers = await _context.Employees.AsNoTracking()
-                    .Where(s => s.IsDelete != true && managerIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.EmployeeName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                foreach (var model in result.Result.Items)
-                {
-                    if (managers.TryGetValue(DataHelpers.GetGuid(model.ManagerId), out var manager))
-                        model.ManagerName = manager.EmployeeName;
-                }
-            }
-
-            return result;
+                ManagerName = s.Manager != null && s.Manager.IsDelete != true
+                    ? s.Manager.EmployeeName : null
+            });
         }
 
         #endregion

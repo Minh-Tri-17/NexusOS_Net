@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NexusOS.BLL.Interfaces;
 using NexusOS.DAL.Models;
@@ -21,38 +20,26 @@ namespace NexusOS.BLL.Services
 
         #region Default Operations
 
-        public override async Task<APIResults<PagingResults<ContractModel>>> GetPaging(FilterModel filter)
+        protected override IQueryable<ContractModel>? ProjectToModel(IQueryable<Contract> query)
         {
-            var result = await base.GetPaging(filter);
-            if (result.IsSuccess && result.Result != null)
+            return query.Select(s => new ContractModel
             {
-                var contractTypeIds = result.Result.Items.Select(s => s.ContractTypeId)
-                   .Where(s => s.HasValue).Distinct().ToList();
+                Id = s.Id,
+                ContractCode = s.ContractCode,
+                ContractName = s.ContractName,
+                StartDate = s.StartDate,
+                EndDate = s.EndDate,
+                Note = s.Note,
+                CreatedAt = s.CreatedAt,
+                CreatedBy = s.CreatedBy,
+                UpdatedAt = s.UpdatedAt,
+                UpdatedBy = s.UpdatedBy,
 
-                var contracts = await _context.CatContractTypes.AsNoTracking()
-                    .Where(s => s.IsDelete != true && contractTypeIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.ContractTypeName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                var employeeIds = result.Result.Items.Select(s => s.EmployeeId)
-                   .Where(s => s.HasValue).Distinct().ToList();
-
-                var employees = await _context.Employees.AsNoTracking()
-                    .Where(s => s.IsDelete != true && employeeIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.EmployeeName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                foreach (var model in result.Result.Items)
-                {
-                    if (contracts.TryGetValue(DataHelpers.GetGuid(model.ContractTypeId), out var contractType))
-                        model.ContractTypeName = contractType.ContractTypeName;
-
-                    if (employees.TryGetValue(DataHelpers.GetGuid(model.EmployeeId), out var employee))
-                        model.EmployeeName = employee.EmployeeName;
-                }
-            }
-
-            return result;
+                ContractTypeName = s.ContractType != null && s.ContractType.IsDelete != true
+                    ? s.ContractType.ContractTypeName : null,
+                EmployeeName = s.Employee != null && s.Employee.IsDelete != true
+                    ? s.Employee.EmployeeName : null
+            });
         }
 
         #endregion

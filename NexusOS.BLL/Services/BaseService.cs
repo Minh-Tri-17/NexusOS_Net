@@ -165,12 +165,27 @@ namespace NexusOS.BLL.Services
 
             query = query.ApplyPaging(filter);
 
-            var entities = await query.ToListAsync();
-            var models = DataHelpers.MappingList<TEntity, TModel>(entities);
+            List<TModel> models;
+            var projectedQuery = ProjectToModel(query);
+
+            if (projectedQuery != null)
+            {
+                models = await projectedQuery.ToListAsync();
+            }
+            else
+            {
+                var entities = await query.ToListAsync();
+                models = DataHelpers.MappingList<TEntity, TModel>(entities);
+            }
 
             var pageResult = new PagingResults<TModel>(models, totalCount, filter.PageIndex, filter.PageSize);
 
             return APIResults<PagingResults<TModel>>.Success(pageResult, _localizer[Messages.GetListResultSuccess]);
+        }
+
+        protected virtual IQueryable<TModel>? ProjectToModel(IQueryable<TEntity> query)
+        {
+            return null;
         }
 
         public virtual async Task<APIResults<byte[]>> Export(FilterModel filter)

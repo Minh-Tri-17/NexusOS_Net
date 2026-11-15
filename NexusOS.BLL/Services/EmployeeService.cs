@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NexusOS.BLL.Interfaces;
 using NexusOS.DAL.Models;
@@ -21,103 +20,61 @@ namespace NexusOS.BLL.Services
 
         #region Default Operations
 
-        public override async Task<APIResults<PagingResults<EmployeeModel>>> GetPaging(FilterModel filter)
+        protected override IQueryable<EmployeeModel> ProjectToModel(IQueryable<Employee> query)
         {
-            var result = await base.GetPaging(filter);
-            if (result.IsSuccess && result.Result != null)
+            return query.Select(s => new EmployeeModel
             {
-                var countryIds = result.Result.Items.Select(s => s.CountryId)
-                    .Where(s => s.HasValue).Distinct().ToList();
+                Id = s.Id,
+                EmployeeCode = s.EmployeeCode,
+                EmployeeName = s.EmployeeName,
+                Gender = s.Gender,
+                DateOfBirth = s.DateOfBirth,
+                Address = s.Address,
+                PhoneNumber = s.PhoneNumber,
+                Email = s.Email,
+                IdentityNumber = s.IdentityNumber,
+                HireDate = s.HireDate,
+                TerminationDate = s.TerminationDate,
+                EmploymentStatus = s.EmploymentStatus,
+                IsMultiStore = s.IsMultiStore,
+                Photo = s.Photo,
+                HealthInsuranceNumber = s.HealthInsuranceNumber,
+                SocialInsuranceNumber = s.SocialInsuranceNumber,
+                BankAccountNumber = s.BankAccountNumber,
+                BankName = s.BankName,
+                EducationLevel = s.EducationLevel,
+                TaxCode = s.TaxCode,
+                EmergencyContactName = s.EmergencyContactName,
+                EmergencyContactPhone = s.EmergencyContactPhone,
+                Note = s.Note,
+                CreatedAt = s.CreatedAt,
+                CreatedBy = s.CreatedBy,
+                UpdatedAt = s.UpdatedAt,
+                UpdatedBy = s.UpdatedBy,
 
-                var countries = await _context.CatCountries.AsNoTracking()
-                    .Where(s => s.IsDelete != true && countryIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.CountryName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                var provinceIds = result.Result.Items.Select(s => s.ProvinceId)
-                    .Where(s => s.HasValue).Distinct().ToList();
-
-                var provinces = await _context.CatProvinces.AsNoTracking()
-                    .Where(s => s.IsDelete != true && provinceIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.ProvinceName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                var wardIds = result.Result.Items.Select(s => s.WardId)
-                    .Where(s => s.HasValue).Distinct().ToList();
-
-                var wards = await _context.CatWards.AsNoTracking()
-                    .Where(s => s.IsDelete != true && wardIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.WardName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                var jobTitleIds = result.Result.Items.Select(s => s.JobTitleId)
-                    .Where(s => s.HasValue).Distinct().ToList();
-
-                var jobTitles = await _context.CatJobTitles.AsNoTracking()
-                    .Where(s => s.IsDelete != true && jobTitleIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.JobTitleName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                var departmentIds = result.Result.Items.Select(s => s.DepartmentId)
-                    .Where(s => s.HasValue).Distinct().ToList();
-
-                var departments = await _context.CatDepartments.AsNoTracking()
-                    .Where(s => s.IsDelete != true && departmentIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.DepartmentName, s.ManagerId })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                var employees = await _context.Employees.AsNoTracking()
-                    .Where(s => s.IsDelete != true)
-                    .Select(s => new { s.Id, s.EmployeeName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                var employeeIds = result.Result.Items.Select(s => s.Id).ToList();
-
-                var contracts = (await _context.Contracts.AsNoTracking()
-                    .Where(s => s.IsDelete != true && s.ContractTypeId.HasValue && s.EmployeeId.HasValue && employeeIds.Contains(s.EmployeeId.Value))
-                    .OrderByDescending(s => s.StartDate ?? s.CreatedAt)
-                    .Select(s => new
-                    {
-                        s.Id,
-                        s.EmployeeId,
-                        s.ContractName,
-                        s.ContractType!.ContractTypeName
-                    })
-                    .ToListAsync())
-                    .DistinctBy(s => s.EmployeeId!.Value)
-                    .ToDictionary(s => s.EmployeeId!.Value, s => s);
-
-                foreach (var model in result.Result.Items)
-                {
-                    if (countries.TryGetValue(DataHelpers.GetGuid(model.CountryId), out var country))
-                        model.CountryName = country.CountryName;
-
-                    if (provinces.TryGetValue(DataHelpers.GetGuid(model.ProvinceId), out var province))
-                        model.ProvinceName = province.ProvinceName;
-
-                    if (wards.TryGetValue(DataHelpers.GetGuid(model.WardId), out var ward))
-                        model.WardName = ward.WardName;
-
-                    if (jobTitles.TryGetValue(DataHelpers.GetGuid(model.JobTitleId), out var jobTitle))
-                        model.JobTitleName = jobTitle.JobTitleName;
-
-                    if (departments.TryGetValue(DataHelpers.GetGuid(model.DepartmentId), out var department))
-                    {
-                        model.DepartmentName = department.DepartmentName;
-
-                        var manager = employees.TryGetValue(DataHelpers.GetGuid(department.ManagerId), out var managerInfo) ? managerInfo : null;
-                        model.ManagerName = manager?.EmployeeName;
-                    }
-
-                    if (contracts.TryGetValue(DataHelpers.GetGuid(model.Id), out var contract))
-                    {
-                        model.ContractName = contract.ContractName;
-                        model.ContractTypeName = contract.ContractTypeName;
-                    }
-                }
-            }
-
-            return result;
+                CountryName = s.Country != null && s.Country.IsDelete != true
+                    ? s.Country.CountryName : null,
+                ProvinceName = s.Province != null && s.Province.IsDelete != true
+                    ? s.Province.ProvinceName : null,
+                WardName = s.Ward != null && s.Ward.IsDelete != true
+                    ? s.Ward.WardName : null,
+                JobTitleName = s.JobTitle != null && s.JobTitle.IsDelete != true
+                    ? s.JobTitle.JobTitleName : null,
+                DepartmentName = s.Department != null && s.Department.IsDelete != true
+                    ? s.Department.DepartmentName : null,
+                ManagerName = s.Department != null && s.Department.Manager != null && s.Department.Manager.IsDelete != true
+                    ? s.Department.Manager.EmployeeName : null,
+                ContractName = s.Contracts
+                    .Where(c => c.IsDelete != true && c.ContractTypeId != null)
+                    .OrderByDescending(c => c.StartDate ?? c.CreatedAt)
+                    .Select(c => c.ContractName)
+                    .FirstOrDefault(),
+                ContractTypeName = s.Contracts
+                    .Where(c => c.IsDelete != true && c.ContractTypeId != null)
+                    .OrderByDescending(c => c.StartDate ?? c.CreatedAt)
+                    .Select(c => c.ContractType!.ContractTypeName)
+                    .FirstOrDefault()
+            });
         }
 
         #endregion

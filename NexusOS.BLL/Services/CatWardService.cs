@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NexusOS.BLL.Interfaces;
 using NexusOS.DAL.Models;
@@ -21,27 +20,22 @@ namespace NexusOS.BLL.Services
 
         #region Default Operations
 
-        public override async Task<APIResults<PagingResults<CatWardModel>>> GetPaging(FilterModel filter)
+        protected override IQueryable<CatWardModel>? ProjectToModel(IQueryable<CatWard> query)
         {
-            var result = await base.GetPaging(filter);
-            if (result.IsSuccess && result.Result != null)
+            return query.Select(s => new CatWardModel
             {
-                var provinceIds = result.Result.Items.Select(s => s.ProvinceId)
-                   .Where(s => s.HasValue).Distinct().ToList();
+                Id = s.Id,
+                WardCode = s.WardCode,
+                WardName = s.WardName,
+                Note = s.Note,
+                CreatedAt = s.CreatedAt,
+                CreatedBy = s.CreatedBy,
+                UpdatedAt = s.UpdatedAt,
+                UpdatedBy = s.UpdatedBy,
 
-                var provinces = await _context.CatProvinces.AsNoTracking()
-                    .Where(s => s.IsDelete != true && provinceIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.ProvinceName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
-                foreach (var model in result.Result.Items)
-                {
-                    if (provinces.TryGetValue(DataHelpers.GetGuid(model.ProvinceId), out var province))
-                        model.ProvinceName = province.ProvinceName;
-                }
-            }
-
-            return result;
+                ProvinceName = s.Province != null && s.Province.IsDelete != true
+                    ? s.Province.ProvinceName : null
+            });
         }
 
         #endregion
