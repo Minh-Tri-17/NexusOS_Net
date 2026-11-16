@@ -21,6 +21,7 @@
   "GetListResultSuccess": "Liste des données récupérée avec succès.",
   "GetResultSuccess": "Détails des données récupérés avec succès.",
   "InternalServerError": "Une erreur interne du serveur est survenue. Veuillez réessayer plus tard.",
+  "Forbidden": "Vous n'avez pas l'autorisation d'effectuer cette action.",
 
   "AuthSuccess": "Authentification réussie.",
   "AuthFailure": "Échec de l'authentification.",

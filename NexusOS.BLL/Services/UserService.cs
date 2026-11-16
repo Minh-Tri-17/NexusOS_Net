@@ -11,10 +11,12 @@ namespace NexusOS.BLL.Services
     {
         #region Infrastructure
 
-        public UserService(NexusOsContext context, ICurrentUserService currentUser,
-            IStringLocalizer<SharedResource> localizer) : base(context, currentUser, localizer)
-        {
+        private readonly IPermissionService _permissionService;
 
+        public UserService(NexusOsContext context, ICurrentUserService currentUser,
+            IStringLocalizer<SharedResource> localizer, IPermissionService permissionService) : base(context, currentUser, localizer)
+        {
+            _permissionService = permissionService;
         }
 
         #endregion
@@ -110,6 +112,8 @@ namespace NexusOS.BLL.Services
 
                 await _context.UserRoles.AddRangeAsync(userRoles);
             }
+
+            await _permissionService.InvalidatePermissionCache();
         }
 
         #endregion

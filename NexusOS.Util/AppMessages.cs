@@ -1,4 +1,4 @@
-﻿namespace NexusOS.Util
+namespace NexusOS.Util
 {
     public class Messages
     {
@@ -22,6 +22,7 @@
         public const string GetResultSuccess = "GetResultSuccess";
         public const string InternalServerError = "InternalServerError";
         public const string FieldIsRequired = "FieldIsRequired";
+        public const string Forbidden = "Forbidden";
 
         #endregion
 

@@ -21,6 +21,7 @@
   "GetListResultSuccess": "Lấy danh sách dữ liệu thành công.",
   "GetResultSuccess": "Lấy thông tin dữ liệu thành công.",
   "InternalServerError": "Đã xảy ra lỗi máy chủ nội bộ. Vui lòng thử lại sau.",
+  "Forbidden": "Bạn không có quyền thực hiện thao tác này.",
 
   "AuthSuccess": "Đăng nhập thành công.",
   "AuthFailure": "Đăng nhập thất bại.",

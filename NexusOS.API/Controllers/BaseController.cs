@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NexusOS.API.Filters;
 using NexusOS.BLL.Interfaces;
 using NexusOS.MB;
 using NexusOS.Util;
@@ -11,6 +12,7 @@ namespace NexusOS.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize] // Đặt ở đây để toàn bộ API đều cần xác thực
+    [ServiceFilter(typeof(ConventionPermissionFilter))] // Check quyền theo convention
     public abstract class BaseController<TService, TEntity, TModel> : ControllerBase
         where TService : IBaseService<TEntity, TModel> // Đảm bảo Service truyền vào có đủ các hàm chuẩn (Create, Update, Delete) để gọi.
         where TEntity : class // Giới hạn kiểu dữ liệu phải là đối tượng để tương thích với EF Core và xử lý Null

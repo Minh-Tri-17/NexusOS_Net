@@ -21,6 +21,7 @@
   "GetListResultSuccess": "Data list retrieved successfully.",
   "GetResultSuccess": "Data details retrieved successfully.",
   "InternalServerError": "Internal server error occurred. Please try again later.",
+  "Forbidden": "You do not have permission to perform this action.",
 
   "AuthSuccess": "Authentication successful.",
   "AuthFailure": "Authentication failed.",

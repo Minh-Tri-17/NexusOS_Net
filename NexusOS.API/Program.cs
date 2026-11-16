@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using NexusOS.API.Filters;
 using NexusOS.API.Middleware;
 using NexusOS.BLL.Services;
 using NexusOS.DAL.Models;
@@ -25,6 +26,7 @@ var builder = WebApplication.CreateBuilder(args);
 #region DI & Database
 
 builder.Services.AddScoped<DevUserSeeder>();
+builder.Services.AddScoped<ConventionPermissionFilter>();
 
 builder.Services.Scan(scan => scan
     .FromAssemblyOf<CatCountryService>() // Định vị Assembly (file .dll) chứa lớp AccountService (tức là toàn bộ project ZenOS.BLL)
