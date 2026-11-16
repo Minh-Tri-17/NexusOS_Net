@@ -344,7 +344,7 @@ namespace NexusOS.Util
                     .ToList();
             }
 
-            var codeCache = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var codeCache = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase); // OrdinalIgnoreCase giúp xác định không phân biệt hoa thường
 
             foreach (var source in sourceList)
             {

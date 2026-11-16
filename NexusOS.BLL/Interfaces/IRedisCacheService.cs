@@ -2,8 +2,8 @@
 {
     public interface IRedisCacheService
     {
-        Task<T?> GetAsync<T>(string key, CancellationToken ct = default);
-        Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken ct = default);
-        Task RemoveAsync(string key, CancellationToken ct = default);
+        public Task<T?> GetAsync<T>(string key, CancellationToken ct = default);
+        public Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken ct = default);
+        public Task RemoveAsync(string key, CancellationToken ct = default);
     }
 }

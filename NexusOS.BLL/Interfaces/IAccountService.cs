@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using NexusOS.MB;
 
 namespace NexusOS.BLL.Interfaces
@@ -10,5 +10,6 @@ namespace NexusOS.BLL.Interfaces
         public Task<APIResults<bool>> ResetPass(UserModel request);
         public Task<APIResults<bool>> ValidateOtp(OTPModel request);
         public List<IdentityError> ValidatePass(string password);
+        public Task<APIResults<UserAccessModel>> GetMyAccess();
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
@@ -25,17 +25,22 @@ namespace NexusOS.BLL.Services
         private readonly IdentityOptions _options; // Dùng để lấy thiết lập Identity
         private readonly IStringLocalizer<SharedResource> _localizer; // Dùng để đa ngôn ngữ hóa thông báo
         private readonly MailHelpers _mailHelpers; // Dùng để quản lý việc gửi email
+        private readonly ICurrentUserService _currentUser; // Dùng để lấy thông tin người dùng hiện tại
+        private readonly IPermissionService _permissionService; // Dùng để lấy danh sách quyền của người dùng
         private static readonly ConcurrentDictionary<string, OtpEntry> otpStore
             = new ConcurrentDictionary<string, OtpEntry>(); // Dùng để lưu trữ mã OTP tạm thời
 
         public AccountService(NexusOsContext context, IConfiguration config,
-            IStringLocalizer<SharedResource> localizer, IOptions<IdentityOptions> options, MailHelpers mailHelpers)
+            IStringLocalizer<SharedResource> localizer, IOptions<IdentityOptions> options, MailHelpers mailHelpers,
+            ICurrentUserService currentUser, IPermissionService permissionService)
         {
             _context = context;
             _config = config;
             _localizer = localizer;
             _options = options.Value;
             _mailHelpers = mailHelpers;
+            _currentUser = currentUser;
+            _permissionService = permissionService;
         }
 
         #endregion
@@ -258,6 +263,37 @@ namespace NexusOS.BLL.Services
                 });
 
             return errors;
+        }
+
+        public async Task<APIResults<UserAccessModel>> GetMyAccess()
+        {
+            var userId = _currentUser.UserId;
+            if (userId == Guid.Empty)
+                return APIResults<UserAccessModel>.Failure(_localizer[Messages.NotFoundGet]);
+
+            var roleNames = await (
+                from ur in _context.UserRoles.AsNoTracking()
+                join r in _context.Roles.AsNoTracking() on ur.RoleId equals r.Id
+                where ur.UserId == userId
+                    && ur.IsDelete != true
+                    && ur.IsActive != false
+                    && r.IsDelete != true
+                    && r.IsActive != false
+                    && !string.IsNullOrWhiteSpace(r.RoleName)
+                select r.RoleName!
+            )
+            .Distinct()
+            .ToListAsync();
+
+            var permissions = await _permissionService.GetUserPermissions(userId);
+
+            var result = new UserAccessModel
+            {
+                RoleName = roleNames.Count > 0 ? string.Join(", ", roleNames) : null,
+                Permissions = permissions.ToList()
+            };
+
+            return APIResults<UserAccessModel>.Success(result, _localizer[Messages.GetResultSuccess]);
         }
 
         #endregion

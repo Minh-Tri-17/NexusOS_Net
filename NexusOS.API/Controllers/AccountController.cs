@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NexusOS.BLL.Interfaces;
 using NexusOS.DAL.Models;
 using NexusOS.MB;
@@ -51,6 +52,14 @@ namespace NexusOS.API.Controllers
         public async Task<ActionResult<APIResults<bool>>> ValidateOtp([FromBody] OTPModel otp)
         {
             var result = await _accountService.ValidateOtp(otp);
+            return Ok(result);
+        }
+
+        [HttpGet(nameof(GetMyAccess))]
+        [Authorize]
+        public async Task<ActionResult<APIResults<UserAccessModel>>> GetMyAccess()
+        {
+            var result = await _accountService.GetMyAccess();
             return Ok(result);
         }
 

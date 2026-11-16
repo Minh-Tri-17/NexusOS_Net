@@ -134,5 +134,11 @@ namespace NexusOS.MB
 
     }
 
+    public class UserAccessModel
+    {
+        public string? RoleName { get; set; }
+        public List<string> Permissions { get; set; } = new List<string>();
+    }
+
     #endregion
 }

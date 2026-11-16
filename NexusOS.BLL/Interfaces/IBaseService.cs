@@ -7,13 +7,13 @@ namespace NexusOS.BLL.Interfaces
         where TEntity : class // Giới hạn kiểu dữ liệu phải là đối tượng để tương thích với EF Core và xử lý Null
         where TModel : class
     {
-        Task<APIResults<PagingResults<TModel>>> GetPaging(FilterModel filter);
-        Task<APIResults<TModel>> GetOne(Guid id);
-        Task<APIResults<bool>> SoftDelete(List<Guid> ids);
-        Task<APIResults<bool>> HardDelete(List<Guid> ids);
-        Task<APIResults<bool>> Create(TModel request);
-        Task<APIResults<bool>> Update(TModel request);
-        Task<APIResults<byte[]>> Export(FilterModel filter);
-        Task<APIResults<bool>> Import(IFormFile fileImport);
+        public Task<APIResults<PagingResults<TModel>>> GetPaging(FilterModel filter);
+        public Task<APIResults<TModel>> GetOne(Guid id);
+        public Task<APIResults<bool>> SoftDelete(List<Guid> ids);
+        public Task<APIResults<bool>> HardDelete(List<Guid> ids);
+        public Task<APIResults<bool>> Create(TModel request);
+        public Task<APIResults<bool>> Update(TModel request);
+        public Task<APIResults<byte[]>> Export(FilterModel filter);
+        public Task<APIResults<bool>> Import(IFormFile fileImport);
     }
 }
