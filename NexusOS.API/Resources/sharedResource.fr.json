@@ -31,6 +31,7 @@
   "OTPIncorrect": "Code OTP incorrect. Il vous reste {0} tentative(s).",
   "OTPCorrect": "Code OTP vérifié avec succès.",
   "InvalidUsernameOrPassword": "Nom d'utilisateur ou mot de passe incorrect.",
+  "AccountLockedWithTime": "Votre compte est temporairement verrouillé en raison d'un trop grand nombre de tentatives de connexion échouées. Veuillez réessayer dans {0} minute(s).",
   "TokenKeyNotConfigured": "La clé de signature du jeton n'est pas configurée sur le serveur.",
   "ResetPasswordFailure": "Échec de la réinitialisation du mot de passe.",
   "ResetPasswordSuccess": "Mot de passe réinitialisé avec succès.",

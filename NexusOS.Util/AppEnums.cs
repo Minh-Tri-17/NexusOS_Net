@@ -56,4 +56,11 @@
         Boolean,
         Guid,
     }
+
+    public enum UserStatus
+    {
+        Active,
+        Inactive,
+        Locked
+    }
 }

@@ -31,6 +31,7 @@
   "OTPIncorrect": "验证码不正确，您还剩余 {0} 次机会。",
   "OTPCorrect": "验证码验证成功。",
   "InvalidUsernameOrPassword": "用户名或密码不正确。",
+  "AccountLockedWithTime": "由于登录失败次数过多，账户已被暂时锁定。请在 {0} 分钟后重试。",
   "TokenKeyNotConfigured": "服务器尚未配置 Token 签名密钥。",
   "ResetPasswordFailure": "重置密码失败。",
   "ResetPasswordSuccess": "密码重置成功。",

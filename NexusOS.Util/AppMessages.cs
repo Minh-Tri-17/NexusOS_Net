@@ -30,6 +30,7 @@ namespace NexusOS.Util
 
         public const string AuthSuccess = "AuthSuccess";
         public const string AuthFailure = "AuthFailure";
+        public const string AccountLockedWithTime = "AccountLockedWithTime";
         public const string OTPNotFound = "OTPNotFound";
         public const string OTPExpired = "OTPExpired";
         public const string OTPNoAttemptsLeft = "OTPNoAttemptsLeft";

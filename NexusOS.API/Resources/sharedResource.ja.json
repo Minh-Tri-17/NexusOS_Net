@@ -31,6 +31,7 @@
   "OTPIncorrect": "OTPコードが正しくありません。残り試行回数は {0} 回です。",
   "OTPCorrect": "OTPコードの認証に成功しました。",
   "InvalidUsernameOrPassword": "ユーザー名またはパスワードが正しくありません。",
+  "AccountLockedWithTime": "ログインの失敗回数が上限に達したため、アカウントは一時的にロックされています。{0} 分後に再度お試しください。",
   "TokenKeyNotConfigured": "サーバーにトークン署名キーが設定されていません。",
   "ResetPasswordFailure": "パスワードのリセットに失敗しました。",
   "ResetPasswordSuccess": "パスワードが正常にリセットされました。",

@@ -56,14 +56,53 @@ namespace NexusOS.BLL.Services
             var username = DataHelpers.GetString(request.Username);
             var password = DataHelpers.GetString(request.Password);
 
-            var user = await _context.Users.AsNoTracking() // Tắt cơ chế "theo dõi thay đổi" (Change Tracking) của Entity Framework
-                .FirstOrDefaultAsync(s => !string.IsNullOrWhiteSpace(s.Username) && (s.Username == username || s.Email == username));
+            var user = await _context.Users
+                .FirstOrDefaultAsync(s => s.IsDelete != true && s.UserStatus == UserStatus.Active.ToString()
+                    && !string.IsNullOrWhiteSpace(s.Username) && (s.Username == username || s.Email == username));
+
+            #region Verify user credentials and lockout
+
             if (user == null)
                 return APIResults<string>.Failure(_localizer[Messages.InvalidUsernameOrPassword]); // Luôn trả ra message chung chung để tránh hacker biết được thông tin chính xác
 
+            if (user.LockoutEnd.HasValue)
+            {
+                if (user.LockoutEnd.Value > DateTime.UtcNow)
+                {
+                    var remainingMinutes = (int)Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalMinutes);
+                    return APIResults<string>.Failure(_localizer[Messages.AccountLockedWithTime, remainingMinutes]);
+                }
+
+                user.LockoutEnd = null;
+                user.FailedLoginCount = 0;
+            }
+
+            var isUserModified = _context.Entry(user).State == EntityState.Modified; // Kiểm tra xem entity có bị thay đổi kể từ lúc lấy từ DB lên
+
             var checkPassword = PasswordHasher.VerifyPassword(password, DataHelpers.GetString(user.PasswordHash));
             if (checkPassword == false)
+            {
+                user.FailedLoginCount++;
+                if (user.FailedLoginCount >= 5)
+                {
+                    user.LockoutEnd = DateTime.UtcNow.AddMinutes(10);
+                    await _context.SaveChangesAsync();
+
+                    return APIResults<string>.Failure(_localizer[Messages.AccountLockedWithTime, 10]);
+                }
+
+                await _context.SaveChangesAsync();
+
                 return APIResults<string>.Failure(_localizer[Messages.InvalidUsernameOrPassword]); // Luôn trả ra message chung chung để tránh hacker biết được thông tin chính xác
+            }
+            else if (user.FailedLoginCount > 0 || user.LockoutEnd.HasValue || isUserModified)
+            {
+                user.FailedLoginCount = 0;
+                user.LockoutEnd = null;
+                await _context.SaveChangesAsync();
+            }
+
+            #endregion
 
             var employee = await _context.Employees.FirstOrDefaultAsync(s => s.Id == DataHelpers.GetGuid(user.EmployeeId));
 
@@ -101,7 +140,7 @@ namespace NexusOS.BLL.Services
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             DateTime expirationTime = request.Remember
-                ? DateTime.UtcNow.AddYears(1) : DateTime.UtcNow.AddDays(1); // UtcNow để không lỗi khi server khác timezone
+                ? DateTime.UtcNow.AddMonths(1) : DateTime.UtcNow.AddDays(1); // UtcNow để không lỗi khi server khác timezone
 
             var token = new JwtSecurityToken(tokenIssuer, tokenIssuer, claims,
                expires: expirationTime, signingCredentials: creds);

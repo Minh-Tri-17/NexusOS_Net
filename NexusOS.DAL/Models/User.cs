@@ -53,6 +53,9 @@ public partial class User
     public int? FailedLoginCount { get; set; }
 
     [Column(TypeName = "datetime")]
+    public DateTime? LockoutEnd { get; set; }
+
+    [Column(TypeName = "datetime")]
     public DateTime? PasswordExpiredAt { get; set; }
 
     public bool? RequirePasswordChange { get; set; }

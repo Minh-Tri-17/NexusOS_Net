@@ -31,6 +31,7 @@
   "OTPIncorrect": "Incorrect OTP. You have {0} attempt(s) remaining.",
   "OTPCorrect": "OTP verified successfully.",
   "InvalidUsernameOrPassword": "Invalid username or password.",
+  "AccountLockedWithTime": "Your account is temporarily locked due to too many failed login attempts. Please try again in {0} minute(s).",
   "TokenKeyNotConfigured": "Token signing key is not configured on the server.",
   "ResetPasswordFailure": "Failed to reset password.",
   "ResetPasswordSuccess": "Password reset successfully.",

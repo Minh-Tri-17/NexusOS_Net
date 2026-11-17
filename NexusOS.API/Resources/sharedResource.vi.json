@@ -31,6 +31,7 @@
   "OTPIncorrect": "Mã OTP không chính xác. Bạn còn {0} lần thử.",
   "OTPCorrect": "Xác thực mã OTP thành công.",
   "InvalidUsernameOrPassword": "Tên đăng nhập hoặc mật khẩu không chính xác.",
+  "AccountLockedWithTime": "Tài khoản đã bị tạm khóa do đăng nhập sai quá nhiều lần. Vui lòng thử lại sau {0} phút.",
   "TokenKeyNotConfigured": "Khóa ký xác thực Token chưa được cấu hình trên hệ thống.",
   "ResetPasswordFailure": "Đặt lại mật khẩu thất bại.",
   "ResetPasswordSuccess": "Đặt lại mật khẩu thành công.",
