@@ -44,14 +44,6 @@ namespace NexusOS.BLL.Services
             var result = await base.GetPaging(filter);
             if (result.IsSuccess && result.Result != null)
             {
-                var employeeIds = result.Result.Items.Select(s => s.EmployeeId)
-                   .Where(s => s.HasValue).Distinct().ToList();
-
-                var employees = await _context.Employees.AsNoTracking()
-                    .Where(s => s.IsDelete != true && employeeIds.Contains(s.Id))
-                    .Select(s => new { s.Id, s.EmployeeName })
-                    .ToDictionaryAsync(s => s.Id, s => s);
-
                 var userIds = result.Result.Items.Select(s => s.Id).ToList();
 
                 var userRoles = await _context.UserRoles.AsNoTracking()
@@ -60,9 +52,6 @@ namespace NexusOS.BLL.Services
 
                 foreach (var model in result.Result.Items)
                 {
-                    if (employees.TryGetValue(DataHelpers.GetGuid(model.EmployeeId), out var employee))
-                        model.EmployeeName = employee.EmployeeName;
-
                     model.RoleIds = userRoles
                         .Where(s => s.UserId == model.Id && s.RoleId.HasValue)
                         .Select(s => s.RoleId!.Value.ToString())
@@ -71,6 +60,34 @@ namespace NexusOS.BLL.Services
             }
 
             return result;
+        }
+
+        protected override IQueryable<UserModel>? ProjectToModel(IQueryable<User> query)
+        {
+            return query.Select(u => new UserModel
+            {
+                Id = u.Id,
+                StoreId = u.StoreId,
+                EmployeeId = u.EmployeeId,
+                UserCode = u.UserCode,
+                Username = u.Username,
+                Email = u.Email,
+                PhoneNumber = u.PhoneNumber,
+                UserStatus = u.UserStatus,
+                UserType = u.UserType,
+                LastLoginAt = u.LastLoginAt,
+                FailedLoginCount = u.FailedLoginCount,
+                PasswordExpiredAt = u.PasswordExpiredAt,
+                RequirePasswordChange = u.RequirePasswordChange,
+                TwoFactorEnabled = u.TwoFactorEnabled,
+                Note = u.Note,
+                CreatedAt = u.CreatedAt,
+                CreatedBy = u.CreatedBy,
+                UpdatedAt = u.UpdatedAt,
+                UpdatedBy = u.UpdatedBy,
+
+                EmployeeName = u.Employee != null ? u.Employee.EmployeeName : null,
+            });
         }
 
         protected override Task BeforeSaveAsync(UserModel request, User entity, bool isNew)

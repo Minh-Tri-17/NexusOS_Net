@@ -11,8 +11,8 @@ namespace NexusOS.API.Filters
 {
     public class ConventionPermissionFilter : IAsyncAuthorizationFilter
     {
-        private static readonly IReadOnlyDictionary<string, string> ActionPermissionMap =
-            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)  // OrdinalIgnoreCase giúp xác định không phân biệt hoa thường
+        private static readonly IReadOnlyDictionary<string, string>
+            ActionPermissionMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["GetOne"] = "View",
                 ["GetPaging"] = "View",
@@ -28,9 +28,7 @@ namespace NexusOS.API.Filters
         private readonly IPermissionService _permissionService;
         private readonly IStringLocalizer<SharedResource> _localizer;
 
-        public ConventionPermissionFilter(
-            ICurrentUserService currentUser,
-            IPermissionService permissionService,
+        public ConventionPermissionFilter(ICurrentUserService currentUser, IPermissionService permissionService,
             IStringLocalizer<SharedResource> localizer)
         {
             _currentUser = currentUser;
@@ -59,8 +57,7 @@ namespace NexusOS.API.Filters
             if (string.IsNullOrWhiteSpace(requiredPermission))
                 return;
 
-            var hasPermission = await _permissionService.HasPermission(
-                userId, requiredPermission, context.HttpContext.RequestAborted);
+            var hasPermission = await _permissionService.HasPermission(userId, requiredPermission);
 
             // Kiểm tra quyền của người dùng trả về lỗi 403 (Forbidden) nếu không đủ quyền.
             if (!hasPermission)

@@ -1,3 +1,5 @@
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
 namespace NexusOS.DAL.Models;
@@ -44,12 +46,7 @@ public partial class NexusOsContext : DbContext
     public virtual DbSet<VwRandomBinary> VwRandomBinaries { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Data Source=ASUS;Initial Catalog=NexusOS;Integrated Security=True;Trust Server Certificate=True");
-        }
-    }
+        => optionsBuilder.UseSqlServer("Name=ConnectionStrings:Context");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -123,6 +120,10 @@ public partial class NexusOsContext : DbContext
         modelBuilder.Entity<LeaveRequest>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.LeaveRequests).HasConstraintName("FK_LeaveRequests_Employees");
+
+            entity.HasOne(d => d.LeaveType).WithMany(p => p.LeaveRequests).HasConstraintName("FK_LeaveRequests_Cat_LeaveTypes");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -133,16 +134,24 @@ public partial class NexusOsContext : DbContext
         modelBuilder.Entity<RolePermission>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Role).WithMany(p => p.RolePermissions).HasConstraintName("FK_RolePermissions_Roles");
         });
 
         modelBuilder.Entity<User>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.Users).HasConstraintName("FK_Users_Employees");
         });
 
         modelBuilder.Entity<UserRole>(entity =>
         {
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Role).WithMany(p => p.UserRoles).HasConstraintName("FK_UserRoles_Roles");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserRoles).HasConstraintName("FK_UserRoles_Users");
         });
 
         modelBuilder.Entity<VwRandomBinary>(entity =>

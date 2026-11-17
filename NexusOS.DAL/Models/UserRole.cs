@@ -38,4 +38,12 @@ public partial class UserRole
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [ForeignKey("RoleId")]
+    [InverseProperty("UserRoles")]
+    public virtual Role? Role { get; set; }
+
+    [ForeignKey("UserId")]
+    [InverseProperty("UserRoles")]
+    public virtual User? User { get; set; }
 }

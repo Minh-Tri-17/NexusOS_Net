@@ -280,10 +280,9 @@ namespace NexusOS.BLL.Services
                     && r.IsDelete != true
                     && r.IsActive != false
                     && !string.IsNullOrWhiteSpace(r.RoleName)
-                select r.RoleName!
-            )
-            .Distinct()
-            .ToListAsync();
+                select r.RoleName!)
+                .Distinct()
+                .ToListAsync();
 
             var permissions = await _permissionService.GetUserPermissions(userId);
 

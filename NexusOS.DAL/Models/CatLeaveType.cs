@@ -33,4 +33,7 @@ public partial class CatLeaveType
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [InverseProperty("LeaveType")]
+    public virtual ICollection<LeaveRequest> LeaveRequests { get; set; } = new List<LeaveRequest>();
 }

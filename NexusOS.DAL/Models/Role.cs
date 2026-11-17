@@ -36,4 +36,10 @@ public partial class Role
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [InverseProperty("Role")]
+    public virtual ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
+
+    [InverseProperty("Role")]
+    public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 }

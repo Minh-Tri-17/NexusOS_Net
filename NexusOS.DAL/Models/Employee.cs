@@ -130,9 +130,15 @@ public partial class Employee
     [InverseProperty("Employees")]
     public virtual CatJobTitle? JobTitle { get; set; }
 
+    [InverseProperty("Employee")]
+    public virtual ICollection<LeaveRequest> LeaveRequests { get; set; } = new List<LeaveRequest>();
+
     [ForeignKey("ProvinceId")]
     [InverseProperty("Employees")]
     public virtual CatProvince? Province { get; set; }
+
+    [InverseProperty("Employee")]
+    public virtual ICollection<User> Users { get; set; } = new List<User>();
 
     [ForeignKey("WardId")]
     [InverseProperty("Employees")]

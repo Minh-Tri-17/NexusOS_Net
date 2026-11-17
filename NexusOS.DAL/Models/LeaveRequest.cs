@@ -53,4 +53,12 @@ public partial class LeaveRequest
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [ForeignKey("EmployeeId")]
+    [InverseProperty("LeaveRequests")]
+    public virtual Employee? Employee { get; set; }
+
+    [ForeignKey("LeaveTypeId")]
+    [InverseProperty("LeaveRequests")]
+    public virtual CatLeaveType? LeaveType { get; set; }
 }

@@ -40,4 +40,8 @@ public partial class RolePermission
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [ForeignKey("RoleId")]
+    [InverseProperty("RolePermissions")]
+    public virtual Role? Role { get; set; }
 }

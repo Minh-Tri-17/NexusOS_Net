@@ -133,7 +133,7 @@ namespace NexusOS.Util
             return _mapper.Map<TDestination>(source, opt =>
             {
                 // Không bỏ qua các trường audit, cho phép AutoMapper map bình thường từ source sang destination
-                opt.Items["IgnoreAuditFields"] = false;
+                opt.Items[AppConstants.IgnoreAuditFields] = false;
             });
         }
 
@@ -175,7 +175,7 @@ namespace NexusOS.Util
             _mapper.Map<TSource, TDestination>(source, destination, opt =>
             {
                 // Bỏ qua các trường audit khi map, tránh việc dữ liệu thô từ source đè mất logic tự sinh bên dưới
-                opt.Items["IgnoreAuditFields"] = true;
+                opt.Items[AppConstants.IgnoreAuditFields] = true;
             });
 
             #region Handle auto-generated fields

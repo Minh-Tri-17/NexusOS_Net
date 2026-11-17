@@ -73,4 +73,11 @@ public partial class User
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? UpdatedBy { get; set; }
+
+    [ForeignKey("EmployeeId")]
+    [InverseProperty("Users")]
+    public virtual Employee? Employee { get; set; }
+
+    [InverseProperty("User")]
+    public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 }

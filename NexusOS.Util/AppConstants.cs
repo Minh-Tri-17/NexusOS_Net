@@ -17,6 +17,7 @@
         public const string Context = "Context";
         public const string Redis = "Redis";
         public const string Resources = "Resources";
+        public const string IgnoreAuditFields = "IgnoreAuditFields";
 
         #endregion
 
