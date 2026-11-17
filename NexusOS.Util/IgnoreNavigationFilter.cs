@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace NexusOS.Util
 {
-    public class HideNavigationPropertiesSchemaFilter : ISchemaFilter
+    public class IgnoreNavigationFilter : ISchemaFilter
     {
         public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
         {

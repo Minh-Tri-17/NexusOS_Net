@@ -144,7 +144,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 
     // 4. Loại bỏ các Navigation Property (toàn hệ thống)
-    options.SchemaFilter<HideNavigationPropertiesSchemaFilter>();
+    options.SchemaFilter<IgnoreNavigationFilter>();
 });
 
 string issuer = builder.Configuration.GetValue<string>("Tokens:Issuer")
