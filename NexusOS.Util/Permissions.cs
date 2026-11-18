@@ -101,6 +101,17 @@
 
         #endregion
 
+        #region LeaveRequest
+
+        public const string LeaveRequestView = "LeaveRequest.View";
+        public const string LeaveRequestCreate = "LeaveRequest.Create";
+        public const string LeaveRequestUpdate = "LeaveRequest.Update";
+        public const string LeaveRequestDelete = "LeaveRequest.Delete";
+        public const string LeaveRequestImport = "LeaveRequest.Import";
+        public const string LeaveRequestExport = "LeaveRequest.Export";
+
+        #endregion
+
         #region User
 
         public const string UserView = "User.View";

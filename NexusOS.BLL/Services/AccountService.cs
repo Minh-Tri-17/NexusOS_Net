@@ -82,7 +82,8 @@ namespace NexusOS.BLL.Services
             var checkPassword = PasswordHasher.VerifyPassword(password, DataHelpers.GetString(user.PasswordHash));
             if (checkPassword == false)
             {
-                user.FailedLoginCount++;
+                user.FailedLoginCount = (user.FailedLoginCount ?? 0) + 1;
+
                 if (user.FailedLoginCount >= 5)
                 {
                     user.LockoutEnd = DateTime.UtcNow.AddMinutes(10);
@@ -104,7 +105,8 @@ namespace NexusOS.BLL.Services
 
             #endregion
 
-            var employee = await _context.Employees.FirstOrDefaultAsync(s => s.Id == DataHelpers.GetGuid(user.EmployeeId));
+            var employee = await _context.Employees.FirstOrDefaultAsync(s => s.IsDelete != true
+                && s.Id == DataHelpers.GetGuid(user.EmployeeId));
 
             var id = employee != null ? employee.Id : Guid.Empty;
             var employeeName = employee != null ? employee.EmployeeName : string.Empty;
@@ -122,7 +124,7 @@ namespace NexusOS.BLL.Services
 
             var roleIds = await _context.UserRoles
                 .AsNoTracking()
-                .Where(s => s.UserId == user.Id)
+                .Where(s => s.IsDelete != true && s.IsActive != false && s.UserId == user.Id)
                 .Select(s => s.RoleId)
                 .ToListAsync();
 
@@ -154,13 +156,6 @@ namespace NexusOS.BLL.Services
         {
             var mail = DataHelpers.GetString(request.Email);
             var password = DataHelpers.GetString(request.Password);
-            var passwordHashed = PasswordHasher.HashPassword(password);
-
-            var user = await _context.Users
-                .FirstOrDefaultAsync(s => s.Email == mail);
-
-            if (user == null)
-                return APIResults<bool>.Failure(_localizer[Messages.NotFoundUpdate]);
 
             var validationResult = ValidatePass(password);
             if (validationResult.Any())
@@ -171,6 +166,14 @@ namespace NexusOS.BLL.Services
 
                 return APIResults<bool>.Failure(error);
             }
+
+            var passwordHashed = PasswordHasher.HashPassword(password);
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(s => s.Email == mail);
+
+            if (user == null)
+                return APIResults<bool>.Failure(_localizer[Messages.NotFoundUpdate]);
 
             user.PasswordHash = passwordHashed;
 

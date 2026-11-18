@@ -43,6 +43,9 @@ namespace NexusOS.Util
 
         public static bool VerifyPassword(string password, string hashedPassword)
         {
+            if (string.IsNullOrWhiteSpace(hashedPassword))
+                return false;
+
             // Chuyển đổi chuỗi hex được lưu trữ thành mảng byte
             byte[] storedBytes = Convert.FromBase64String(hashedPassword);
 

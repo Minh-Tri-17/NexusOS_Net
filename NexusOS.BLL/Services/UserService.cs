@@ -34,6 +34,8 @@ namespace NexusOS.BLL.Services
                     .ToListAsync();
 
                 result.Result.RoleIds = roleIds;
+                result.Result.PasswordHash = null; 
+                result.Result.PasswordSalt = null;
             }
 
             return result;

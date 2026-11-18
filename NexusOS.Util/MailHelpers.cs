@@ -66,7 +66,7 @@ namespace NexusOS.Util
                             {
                                 if (formFile.Length > 0)
                                 {
-                                    using var stream = formFile.OpenReadStream();
+                                    var stream = formFile.OpenReadStream();
                                     var attachment = new Attachment(stream, formFile.FileName);
                                     mailMessage.Attachments.Add(attachment);
                                 }

@@ -56,9 +56,9 @@ builder.Services.AddCors(p => p.AddPolicy("FrontendCorsPolicy", build =>
 {
     build.SetIsOriginAllowed(origin =>
     {
-        if (string.IsNullOrEmpty(origin)) return false;
+        if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
 
-        var host = new Uri(origin).Host;
+        var host = uri.Host;
         // Chấp nhận localhost hoặc bất kỳ domain nào kết thúc bằng .trycloudflare.com
         return host == "localhost" || host.EndsWith(".trycloudflare.com");
     })
