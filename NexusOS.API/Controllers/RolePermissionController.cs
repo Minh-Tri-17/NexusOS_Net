@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NexusOS.BLL.Interfaces;
 using NexusOS.DAL.Models;
 using NexusOS.MB;
@@ -13,9 +14,13 @@ namespace NexusOS.API.Controllers
     {
         #region Infrastructure
 
-        public RolePermissionController(IRolePermissionService RolePermissionService) : base(RolePermissionService)
-        {
+        private readonly IStringLocalizer<SharedResource> _localizer;
 
+        public RolePermissionController(
+            IRolePermissionService RolePermissionService,
+            IStringLocalizer<SharedResource> localizer) : base(RolePermissionService)
+        {
+            _localizer = localizer;
         }
 
         #endregion
@@ -27,7 +32,7 @@ namespace NexusOS.API.Controllers
         #region Custom Operations
 
         [HttpGet($"{nameof(GetPermission)}")]
-        public virtual async Task<ActionResult> GetPermission()
+        public virtual ActionResult<APIResults<List<string>>> GetPermission()
         {
             var result = typeof(Permissions)
                 .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
@@ -35,7 +40,7 @@ namespace NexusOS.API.Controllers
                 .Select(f => (string)f.GetValue(null)!)
                 .ToList();
 
-            return Ok(result);
+            return Ok(APIResults<List<string>>.Success(result, _localizer[Messages.GetListResultSuccess]));
         }
 
         #endregion

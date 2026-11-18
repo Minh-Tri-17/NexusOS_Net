@@ -22,6 +22,7 @@
   "GetResultSuccess": "データ詳細の取得に成功しました。",
   "InternalServerError": "内部サーバーエラーが発生しました。しばらくしてからもう一度お試しください。",
   "Forbidden": "この操作を実行する権限がありません。",
+  "FileNotFound": "ファイルが見つからないか、空です。",
 
   "AuthSuccess": "ログインに成功しました。",
   "AuthFailure": "ログインに失敗しました。",

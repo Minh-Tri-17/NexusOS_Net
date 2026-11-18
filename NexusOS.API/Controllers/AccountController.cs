@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexusOS.BLL.Interfaces;
-using NexusOS.DAL.Models;
 using NexusOS.MB;
 
 namespace NexusOS.API.Controllers
@@ -28,7 +27,7 @@ namespace NexusOS.API.Controllers
         #region Custom Operations
 
         [HttpPost(nameof(Authentication))]
-        public async Task<ActionResult<User>> Authentication([FromBody] UserModel user)
+        public async Task<ActionResult<APIResults<string>>> Authentication([FromBody] UserModel user)
         {
             var result = await _accountService.Auth(user);
             return Ok(result);

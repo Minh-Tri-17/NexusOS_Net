@@ -88,7 +88,8 @@ namespace NexusOS.BLL.Services
                 UpdatedAt = u.UpdatedAt,
                 UpdatedBy = u.UpdatedBy,
 
-                EmployeeName = u.Employee != null ? u.Employee.EmployeeName : null,
+                EmployeeName = u.Employee != null && u.Employee.IsDelete != true 
+                    ? u.Employee.EmployeeName : null,
             });
         }
 

@@ -219,7 +219,7 @@ namespace NexusOS.BLL.Services
         public virtual async Task<APIResults<bool>> Import(IFormFile fileImport)
         {
             if (fileImport == null || fileImport.Length <= 0)
-                return APIResults<bool>.Failure(AppConstants.FileNotFound);
+                return APIResults<bool>.Failure(_localizer[AppConstants.FileNotFound]);
 
             try
             {

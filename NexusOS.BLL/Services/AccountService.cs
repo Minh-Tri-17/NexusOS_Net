@@ -154,8 +154,17 @@ namespace NexusOS.BLL.Services
 
         public async Task<APIResults<bool>> ResetPass(UserModel request)
         {
-            var mail = DataHelpers.GetString(request.Email);
+            var mail = DataHelpers.GetString(request.Email).Trim().ToLowerInvariant();
             var password = DataHelpers.GetString(request.Password);
+
+            if (!otpStore.TryGetValue(mail, out var otpEntry) || !otpEntry.IsVerified)
+                return APIResults<bool>.Failure(_localizer[Messages.OTPNotFound]);
+
+            if (DateTime.UtcNow > otpEntry.ExpiresAt)
+            {
+                otpStore.TryRemove(mail, out _);
+                return APIResults<bool>.Failure(_localizer[Messages.OTPExpired]);
+            }
 
             var validationResult = ValidatePass(password);
             if (validationResult.Any())
@@ -167,26 +176,28 @@ namespace NexusOS.BLL.Services
                 return APIResults<bool>.Failure(error);
             }
 
-            var passwordHashed = PasswordHasher.HashPassword(password);
-
             var user = await _context.Users
-                .FirstOrDefaultAsync(s => s.Email == mail);
+                .FirstOrDefaultAsync(s => s.IsDelete != true && s.Email == mail);
 
             if (user == null)
                 return APIResults<bool>.Failure(_localizer[Messages.NotFoundUpdate]);
 
-            user.PasswordHash = passwordHashed;
+            user.PasswordHash = PasswordHasher.HashPassword(password);
 
             var result = await _context.SaveChangesAsync();
 
-            return result > 0
-                ? APIResults<bool>.Success(true, _localizer[Messages.ResetPasswordSuccess])
-                : APIResults<bool>.Failure(_localizer[Messages.ResetPasswordFailure]);
+            if (result > 0)
+            {
+                otpStore.TryRemove(mail, out _);
+                return APIResults<bool>.Success(true, _localizer[Messages.ResetPasswordSuccess]);
+            }
+
+            return APIResults<bool>.Failure(_localizer[Messages.ResetPasswordFailure]);
         }
 
         public async Task<APIResults<bool>> ValidateOtp(OTPModel request)
         {
-            var mail = DataHelpers.GetString(request.Email);
+            var mail = DataHelpers.GetString(request.Email).Trim().ToLowerInvariant();
             var otp = DataHelpers.GetString(request.Otp);
 
             var validateMessage = ValidateOtp(mail, otp);
@@ -198,10 +209,8 @@ namespace NexusOS.BLL.Services
 
         private string ValidateOtp(string email, string otp)
         {
-            if (!otpStore.TryGetValue(email, out var entryObj))
+            if (!otpStore.TryGetValue(email, out var entry) || entry.IsVerified)
                 return _localizer[Messages.OTPNotFound];
-
-            var entry = (dynamic)entryObj;
 
             // Kiểm tra hết hạn
             if (DateTime.UtcNow > entry.ExpiresAt)
@@ -226,18 +235,21 @@ namespace NexusOS.BLL.Services
             {
                 entry.AttemptsLeft--;
                 otpStore[email] = entry; // cập nhật số lần thử
-                return _localizer[Messages.OTPIncorrect];
+                return _localizer[Messages.OTPIncorrect, entry.AttemptsLeft];
             }
 
-            // OTP đúng → remove khỏi store
-            otpStore.TryRemove(email, out _);
+            // OTP đúng → đánh dấu đã xác thực và gia hạn 5 phút để đổi mật khẩu
+            entry.IsVerified = true;
+            entry.ExpiresAt = DateTime.UtcNow.AddMinutes(5);
+            otpStore[email] = entry;
 
             return string.Empty;
         }
 
         public async Task<APIResults<bool>> SendOTP(MailModel mail)
         {
-            var otpString = GenerateOtp(DataHelpers.GetString(mail.To));
+            var email = DataHelpers.GetString(mail.To).Trim().ToLowerInvariant();
+            var otpString = GenerateOtp(email);
             mail.Subject = "SendOTP";
             mail.Body = otpString;
 

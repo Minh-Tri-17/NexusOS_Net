@@ -22,6 +22,7 @@
   "GetResultSuccess": "获取数据详情成功。",
   "InternalServerError": "发生服务器内部错误，请稍后重试。",
   "Forbidden": "您没有权限执行此操作。",
+  "FileNotFound": "未找到文件或文件为空。",
 
   "AuthSuccess": "登录成功。",
   "AuthFailure": "登录失败。",

@@ -29,6 +29,7 @@ namespace NexusOS.MB
         public string Salt { get; set; } = string.Empty;
         public DateTime ExpiresAt { get; set; }
         public int AttemptsLeft { get; set; } = 3;
+        public bool IsVerified { get; set; } = false;
     }
 
     public class FilterModel
