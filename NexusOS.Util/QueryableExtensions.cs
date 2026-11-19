@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NexusOS.MB;
 using System.Linq.Expressions;
 
@@ -67,6 +67,26 @@ namespace NexusOS.Util
                             if (propValue != DateTime.MinValue)
                                 query = query.Where(s => EF.Functions.DateDiffDay(EF.Property<DateTime?>(s!, propName)!.Value,
                                     propValue) == 0);
+
+                            break;
+                        }
+                    case (nameof(FilterType.Date), nameof(FilterOperator.Between)):
+                        {
+                            var parts = DataHelpers.GetString(filterValue).Split(',', StringSplitOptions.TrimEntries);
+                            var fromDate = parts.Length > 0 ? DataHelpers.GetDateTime(parts[0]) : DateTime.MinValue;
+                            var toDate = parts.Length > 1 ? DataHelpers.GetDateTime(parts[1]) : DateTime.MinValue;
+
+                            if (fromDate != DateTime.MinValue)
+                            {
+                                var startDate = fromDate.Date;
+                                query = query.Where(s => EF.Property<DateTime?>(s!, propName) >= startDate);
+                            }
+
+                            if (toDate != DateTime.MinValue)
+                            {
+                                var endDate = toDate.Date.AddDays(1);
+                                query = query.Where(s => EF.Property<DateTime?>(s!, propName) < endDate);
+                            }
 
                             break;
                         }
