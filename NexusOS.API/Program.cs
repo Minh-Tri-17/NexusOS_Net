@@ -192,13 +192,13 @@ builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfiles>());
 #region Log
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
+    .MinimumLevel.Error()
     // Giảm log từ ASP.NET
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Error)
     // Giảm log từ Entity Framework
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Error)
     // Giảm log từ System
-    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Error)
     .Enrich.FromLogContext()
     .WriteTo.File(
         "Logs/log-.txt",
@@ -316,7 +316,11 @@ app.UseMiddleware<ExceptionMiddleware>(); // ⚠️ Bắt toàn bộ lỗi
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
-}); // 📝 Ghi log toàn bộ HTTP request/response
+    options.GetLevel = (httpContext, elapsed, ex) =>
+        ex != null || httpContext.Response.StatusCode >= 400
+            ? LogEventLevel.Error
+            : LogEventLevel.Verbose;
+}); // 📝 Chỉ ghi log các HTTP request bị lỗi (StatusCode >= 400 hoặc có Exception)
 
 //app.UseHttpsRedirection(); // 🔐 Chuyển hướng HTTPS
 
